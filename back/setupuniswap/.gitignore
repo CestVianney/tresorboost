@@ -1,6 +1,10 @@
 node_modules
 .env
 
+setupuniswap/node_modules
+setupuniswap/.env
+
+
 # Hardhat files
 /cache
 /artifacts
