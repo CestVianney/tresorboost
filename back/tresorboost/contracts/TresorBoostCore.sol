@@ -20,19 +20,30 @@ contract TresorBoostCore is Ownable {
         bankAccount = _bankAccount;
     }
 
-    function depositTo(address _toPool, uint256 _amount) public {
-        deposits[msg.sender][_toPool] += _amount;
-        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_toPool);
+    function depositTo(address _toContract, uint256 _amount) public {
+        require(farmManager.getFarmInfo(_toContract).isActive, "Pool is not active");
+        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_toContract);
+        require(swapManager.getSwapInfo(farmInfo.depositToken).isActive, "Swap is not active");
+        if(farmInfo.rewardToken != address(0)) {
+            require(swapManager.getSwapInfo(farmInfo.rewardToken).isActive, "Swap is not active");
+        }
+
+        SwapManager.SwapInfo memory swapInfo = swapManager.getSwapInfo(farmInfo.depositToken);
+        bytes memory swapData = abi.encodeWithSelector(swapInfo.swapSelector, _amount);
+        (bool swapResult,) = swapInfo.swapAddress.call(swapData);
+        require(swapResult, "Swap failed");
+
         bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, _amount);
-        (bool depositResult,) = _toPool.call(depositData);
+        (bool depositResult,) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
+        deposits[msg.sender][_toContract] += _amount;
     }
 
-    function withdrawFrom(address _fromPool, uint256 _amount) public {
-        deposits[msg.sender][_fromPool] -= _amount;
-        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromPool);
+    function withdrawFrom(address _fromContract, uint256 _amount) public {
+        deposits[msg.sender][_fromContract] -= _amount;
+        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromContract);
         bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount);
-        (bool withdrawResult,) = _fromPool.call(withdrawData);
+        (bool withdrawResult,) = _fromContract.call(withdrawData);
         require(withdrawResult, "Withdraw failed");
     }
 }

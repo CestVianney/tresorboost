@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract FarmManager is Ownable {
     struct FarmInfo {
         address farmAddress;
-        address depositTokenA;
-        address depositTokenB;
+        address depositToken;
         address rewardToken;
         bytes4 depositSelector;
         bytes4 withdrawSelector;
         bytes4 claimSelector;
+        bool isActive;
     }
 
     mapping(address => FarmInfo) internal farms;
@@ -19,27 +19,30 @@ contract FarmManager is Ownable {
     constructor() Ownable(msg.sender) {}
 
     function addFarm(
+        bool _isActive,
         address _farmAddress,
-        address _depositTokenA,
-        address _depositTokenB,
+        address _depositToken,
         address _rewardToken,
         string memory _depositFunction,
         string memory _withdrawFunction,
-        string memory _claimFunction
+        string memory _claimFunction        
     ) public onlyOwner {
         farms[_farmAddress] = FarmInfo({
+            isActive: _isActive,
             farmAddress: _farmAddress,
-            depositTokenA: _depositTokenA,
-            depositTokenB: _depositTokenB,
+            depositToken: _depositToken,
             rewardToken: _rewardToken,
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
             claimSelector: bytes4(keccak256(bytes(_claimFunction)))
-        });
+            });
     }
 
     function getFarmInfo(address _farmAddress) public view returns (FarmInfo memory) {
         return farms[_farmAddress];
     }
 
+    function setFarmInfo(address _farmAddress, FarmInfo memory _farmInfo) public onlyOwner {
+        farms[_farmAddress] = _farmInfo;
+    }
 }
