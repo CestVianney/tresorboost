@@ -14,7 +14,7 @@ contract SwapManager is Ownable {
 
     mapping(address => mapping(address => SwapInfo)) internal swapsForToken;
 
-    constructor(address _owner) Ownable(_owner) {}
+    constructor() Ownable(msg.sender) {}
 
     function addSwap(address _tokenIn, address _tokenOut, address _swapAddress, string memory _swapFunction) public onlyOwner {
         swapsForToken[_tokenIn][_tokenOut] = SwapInfo({
