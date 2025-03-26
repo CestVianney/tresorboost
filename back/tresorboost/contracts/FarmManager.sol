@@ -11,6 +11,7 @@ contract FarmManager is Ownable {
         bytes4 depositSelector;
         bytes4 withdrawSelector;
         bytes4 claimSelector;
+        uint16 rewardRate;
         bool isActive;
     }
 
@@ -20,6 +21,7 @@ contract FarmManager is Ownable {
 
     function addFarm(
         bool _isActive,
+        uint16 _rewardRate,
         address _farmAddress,
         address _depositToken,
         address _rewardToken,
@@ -32,6 +34,7 @@ contract FarmManager is Ownable {
             farmAddress: _farmAddress,
             depositToken: _depositToken,
             rewardToken: _rewardToken,
+            rewardRate: _rewardRate,
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
             claimSelector: bytes4(keccak256(bytes(_claimFunction)))

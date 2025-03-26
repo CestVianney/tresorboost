@@ -12,12 +12,12 @@ contract SwapManager is Ownable {
         bool isActive;
     }
 
-    mapping(address => SwapInfo) internal swapsForToken;
+    mapping(address => mapping(address => SwapInfo)) internal swapsForToken;
 
     constructor(address _owner) Ownable(_owner) {}
 
-    function addSwap(address _swapAddress, address _tokenOut, string memory _swapFunction) public onlyOwner {
-        swapsForToken[_swapAddress] = SwapInfo({
+    function addSwap(address _tokenIn, address _tokenOut, address _swapAddress, string memory _swapFunction) public onlyOwner {
+        swapsForToken[_tokenIn][_tokenOut] = SwapInfo({
             swapAddress: _swapAddress,
             tokenOut: _tokenOut,
             swapSelector: bytes4(keccak256(bytes(_swapFunction))),
@@ -25,11 +25,11 @@ contract SwapManager is Ownable {
         });
     }
 
-    function getSwapInfo(address _swapAddress) public view returns (SwapInfo memory) {
-        return swapsForToken[_swapAddress];
+    function getSwapInfo(address _tokenIn, address _tokenOut) public view returns (SwapInfo memory) {
+        return swapsForToken[_tokenIn][_tokenOut];
     }
 
-    function setSwapInfo(address _swapAddress, SwapInfo memory _swapInfo) public onlyOwner {
-        swapsForToken[_swapAddress] = _swapInfo;
+    function setSwapInfo(address _tokenIn, address _tokenOut, SwapInfo memory _swapInfo) public onlyOwner {
+        swapsForToken[_tokenIn][_tokenOut] = _swapInfo;
     }
 }

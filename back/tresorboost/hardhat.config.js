@@ -7,8 +7,9 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
+        enabled: true,
         url: process.env.ETH_RPC_URL,
-        blockNumber: 19000000
+        blockNumber: 21423360
       }
     }
   }
