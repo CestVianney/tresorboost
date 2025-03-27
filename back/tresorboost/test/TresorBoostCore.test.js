@@ -81,20 +81,11 @@ describe("TresorBoostCore", function () {
             tresorBoostCore.getAddress(),
             EURe.getAddress(),
             USDT.getAddress(),
-            "deposit",
-            "withdraw",
-            "claim"
+            "deposit(uint256)",
+            "withdraw(uint256)",
+            "claim()"
         );
-        /*
-        bool _isActive,
-        uint16 _rewardRate,
-        address _farmAddress,
-        address _depositToken,
-        address _rewardToken,
-        string memory _depositFunction,
-        string memory _withdrawFunction,
-        string memory _claimFunction        
-        */
+
     });
 
     it("should deploy the contract", async function () {
@@ -155,7 +146,7 @@ describe("TresorBoostCore", function () {
     });
 
     it("should swap EURe for USDT", async function () {
-        const { uniswapFactory, uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
+        const { uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
         
         // D'abord, ajouter de la liquidité
         const liquidityEURe = ethers.parseEther("1000"); // 1000 EURe
@@ -170,8 +161,8 @@ describe("TresorBoostCore", function () {
             USDT.getAddress(),
             liquidityEURe,
             liquidityUSDT,
-            0, // amountEUReMin
-            0, // amountUSDTMin
+            0,
+            0,
             owner.address,
             deadline
         );
