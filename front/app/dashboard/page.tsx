@@ -1,8 +1,8 @@
 import React from 'react'
-import Welcome from '@/components/Welcome'
-import GlobalIndicators from '@/components/GlobalIndicators'
-import ProfileDetails from '@/components/ProfileDetails'
-import ActivityHistory from '@/components/ActivityHistory'
+import Welcome from '@/components/dashboard/Welcome'
+import GlobalIndicators from '@/components/dashboard/GlobalIndicators'
+import ProfileDetails from '@/components/dashboard/ProfileDetails'
+import ActivityHistory from '@/components/dashboard/ActivityHistory'
 import { Separator } from "@/components/ui/separator"
 
 export default function Dashboard() {

@@ -9,8 +9,19 @@ const main = async () => {
     const farmManager = await deployFarmManager();
     // console.log("------------------------------DEPLOY SWAP MANAGER------------------------------");
     // const swapManager = await deploySwapManager();
-    console.log("------------------------------DEPLOY TRESOR BOOST CORE------------------------------");
+    console.log("------------------------------DEPLOY TRESOR BOOST CORE-------------------------");
     const tresorBoostCore = await deployTresorBoostCore(await farmManager.getAddress(), await owner.getAddress());
+    
+    const USDCAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+    const USDTAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+    console.log("------------------------------DEPLOY VAULT 4%------------------------------");
+    const vaultUSDC4 = await deployVault(USDCAddress, 400);
+    console.log("------------------------------DEPLOY VAULT 7.5%------------------------------");
+    const vaultUSDT75 = await deployVault(USDTAddress, 750);
+    console.log("------------------------------DEPLOY VAULT 10%------------------------------");
+    const vaultUSDC10 = await deployVault(USDCAddress, 1000);
+    console.log("------------------------------DEPLOY VAULT 15%------------------------------");
+    const vaultUSDT15 = await deployVault(USDTAddress, 1500);
 }
 
 async function deployFarmManager() {
@@ -18,7 +29,6 @@ async function deployFarmManager() {
     const farmManager = await FarmManager.deploy();
     await farmManager.waitForDeployment();
     console.log("FarmManager deployed to:", await farmManager.getAddress());
-    console.log(await ethers.provider.getCode(await farmManager.getAddress()));
     return farmManager;
 }
 
@@ -38,6 +48,14 @@ async function deployTresorBoostCore(farmManagerAddress, ownerAddress) {
     await tresorBoostCore.waitForDeployment();
     console.log("TresorBoostCore deployed to:", await tresorBoostCore.getAddress());
     return tresorBoostCore;
+}
+
+async function deployVault(tokenAddress, apr) {
+    const Vault = await ethers.getContractFactory("Vault");
+    const vault = await Vault.deploy(tokenAddress, apr);
+    await vault.waitForDeployment();
+    console.log("Vault deployed to:", await vault.getAddress());
+    return vault;
 }
 
 main().catch((e) => {

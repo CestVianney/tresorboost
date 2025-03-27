@@ -4,7 +4,7 @@ const Welcome = ({ username }: { username: string }) => {
   return (
     <div>
       <h1 className="font-bold text-3xl">
-        Welcome <span className="text-yellow-500">{username}</span> !
+        Bienvenue <span className="text-yellow-500">{username}</span> !
       </h1>
     </div>
   )
