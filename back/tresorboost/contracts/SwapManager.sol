@@ -7,29 +7,41 @@ contract SwapManager is Ownable {
 
     struct SwapInfo {
         address swapAddress;
-        address tokenOut;
+        address tokenA;
+        address tokenB;
         bytes4 swapSelector;
         bool isActive;
     }
 
     mapping(address => mapping(address => SwapInfo)) internal swapsForToken;
 
-    constructor(address _owner) Ownable(_owner) {}
+    constructor() Ownable(msg.sender) {}
 
-    function addSwap(address _tokenIn, address _tokenOut, address _swapAddress, string memory _swapFunction) public onlyOwner {
-        swapsForToken[_tokenIn][_tokenOut] = SwapInfo({
+    function _sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
+        require(tokenA != tokenB, "Identical addresses");
+        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        require(token0 != address(0), "Zero address");
+    }
+
+    function addSwap(address _tokenA, address _tokenB, address _swapAddress, string memory _swapFunction) public onlyOwner {
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
+        
+        swapsForToken[token0][token1] = SwapInfo({
             swapAddress: _swapAddress,
-            tokenOut: _tokenOut,
+            tokenA: token0,
+            tokenB: token1,
             swapSelector: bytes4(keccak256(bytes(_swapFunction))),
             isActive: true
         });
     }
 
-    function getSwapInfo(address _tokenIn, address _tokenOut) public view returns (SwapInfo memory) {
-        return swapsForToken[_tokenIn][_tokenOut];
+    function getSwapInfo(address _tokenA, address _tokenB) public view returns (SwapInfo memory) {
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
+        return swapsForToken[token0][token1];
     }
 
-    function setSwapInfo(address _tokenIn, address _tokenOut, SwapInfo memory _swapInfo) public onlyOwner {
-        swapsForToken[_tokenIn][_tokenOut] = _swapInfo;
+    function setSwapInfo(address _tokenA, address _tokenB, SwapInfo memory _swapInfo) public onlyOwner {
+        (address token0, address token1) = _sortTokens(_tokenA, _tokenB);
+        swapsForToken[token0][token1] = _swapInfo;
     }
 }
