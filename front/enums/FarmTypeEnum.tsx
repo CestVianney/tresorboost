@@ -1,5 +1,5 @@
 export enum FarmTypeEnum {
     PRUDENT = 0,
-    DYNAMIQUE = 1,
-    DEGEN = 2,
+    EQUILIBRE = 1,
+    DYNAMIQUE = 2,
 }

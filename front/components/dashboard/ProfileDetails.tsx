@@ -1,12 +1,17 @@
 import React from 'react'
 import Profile from './Profile'
+import { FarmData } from '@/constants/FarmData'
+import { FarmTypeEnum } from '@/enums/FarmTypeEnum'
+import { formatPercentage } from '@/utils/utils'
 
-const ProfileDetails = () => {
+const ProfileDetails = ({ farms }: { farms: FarmData[] }) => {
     return (
 <div className="flex flex-row justify-center items-center gap-x-44">
-    <Profile profileName="PRUDENT" value={1000} annualRate={4} monthlyGain={30} yearlyGain={500} bgColor="bg-gray-300" />
-    <Profile profileName="EQUILIBRE" value={2000} annualRate={6} monthlyGain={40} yearlyGain={700} bgColor="bg-yellow-300" />
-    <Profile profileName="DYNAMIQUE" value={3000} annualRate={8} monthlyGain={50} yearlyGain={1000} bgColor="bg-gray-600" textColor="text-white" />
+    {farms.map((farm) => (
+        <Profile profileName={FarmTypeEnum[farm.farmType]} value={farm.value} annualRate={formatPercentage(farm.rewardRate)} monthlyGain={farm.monthlyGain} yearlyGain={farm.yearlyGain} 
+        bgColor={farm.farmType === FarmTypeEnum.PRUDENT ? "bg-gray-300" : farm.farmType === FarmTypeEnum.EQUILIBRE ? "bg-yellow-300" : "bg-gray-600"}
+        textColor={farm.farmType === FarmTypeEnum.DYNAMIQUE ? "text-white" : farm.farmType === FarmTypeEnum.EQUILIBRE ? "text-black" : "text-black"} />
+    ))}
 </div>
     )
 }

@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from "react"
 import { useAccount } from "wagmi"
-import { TBC_ADDRESS, TBC_ABI } from "@/constants/tresorboostcorecontract"
-import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/farmmanagercontract"
+import { TBC_ADDRESS, TBC_ABI } from "@/constants/TresorBoostCoreContract"
+import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/FarmManagerContract"
 import { useReadContract } from "wagmi"
 import { checkOwnerage } from "@/hooks/useOwner"
 

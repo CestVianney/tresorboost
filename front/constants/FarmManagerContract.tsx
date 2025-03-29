@@ -34,24 +34,6 @@ export const FARM_MANAGER_ABI = [
         "internalType": "address",
         "name": "farmAddress",
         "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "depositToken",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "isActive",
-        "type": "bool"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "farmType",
-        "type": "uint8"
       }
     ],
     "name": "FarmAdded",
@@ -325,4 +307,4 @@ export const FARM_MANAGER_ABI = [
     "type": "function"
   }
 ]
-export const FARM_MANAGER_ADDRESS = "0x205cfc23ef26922e116135500abb4b12ab6d4668"
+export const FARM_MANAGER_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"

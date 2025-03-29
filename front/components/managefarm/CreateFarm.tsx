@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import TitleDivider from '../ui/titledivider'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Card, CardContent, CardHeader } from '../ui/card'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select'
 import { FarmTypeEnum } from '@/enums/FarmTypeEnum'
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group'
 import { useWriteContract } from 'wagmi'
-import { FARM_MANAGER_ABI, FARM_MANAGER_ADDRESS } from '@/constants/farmmanagercontract'
+import { FARM_MANAGER_ABI, FARM_MANAGER_ADDRESS } from '@/constants/FarmManagerContract'
 import { Button } from '../ui/button'
 import { useToast } from '@/hooks/use-toast'
 
@@ -27,9 +27,8 @@ const CreateFarm = () => {
     const [rewardRate, setRewardRate] = useState<number>(400);
 
     const handlerAddFarm = async() => {
-        console.log(isActive, rewardRate, farmType, farmAddress, depositTokenAddress, rewardTokenAddress, depositFunction, withdrawFunction, claimFunction);
         try {
-            await writeContract({
+            const hash = await writeContract({
                 address: FARM_MANAGER_ADDRESS,
                 abi: FARM_MANAGER_ABI,
                 functionName: 'addFarm',
@@ -47,7 +46,7 @@ const CreateFarm = () => {
             });
 
             toast({
-                title: 'Transaction envoyée'
+                title: 'Transaction confirmée'
             });
 
             // Réinitialiser les champs après succès

@@ -1,4 +1,4 @@
-import { TBC_ABI, TBC_ADDRESS } from "@/constants/tresorboostcorecontract";
+import { TBC_ABI, TBC_ADDRESS } from "@/constants/TresorBoostCoreContract";
 import { useEffect, useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
 
