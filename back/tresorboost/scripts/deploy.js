@@ -11,17 +11,20 @@ const main = async () => {
     // const swapManager = await deploySwapManager();
     console.log("------------------------------DEPLOY TRESOR BOOST CORE-------------------------");
     const tresorBoostCore = await deployTresorBoostCore(await farmManager.getAddress(), await owner.getAddress());
-    
-    const USDCAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-    const USDTAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+    console.log("------------------------------DEPLOY FAKE EURe------------------------------");
+    const aEURe = await deployMintFakeEURe(owner.address);
+    console.log("------------------------------DEPLOY FAKE USDT------------------------------");
+    const aUSDT = await deployMintFakeUSDT(owner.address);
+    console.log("------------------------------ADD LIQUIDITY EURe USDT------------------------------");
+    await addLiquidityEUReUSDT(aEURe, aUSDT);
     console.log("------------------------------DEPLOY VAULT 4%------------------------------");
-    const vaultUSDC4 = await deployVault(USDCAddress, 400);
+    const vaultUSDC4 = await deployVault(aUSDT, 400);
     console.log("------------------------------DEPLOY VAULT 7.5%------------------------------");
-    const vaultUSDT75 = await deployVault(USDTAddress, 750);
+    const vaultUSDT75 = await deployVault(aUSDT, 750);
     console.log("------------------------------DEPLOY VAULT 10%------------------------------");
-    const vaultUSDC10 = await deployVault(USDCAddress, 1000);
+    const vaultUSDC10 = await deployVault(aUSDT, 1000);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
-    const vaultUSDT15 = await deployVault(USDTAddress, 1500);
+    const vaultUSDT15 = await deployVault(aUSDT, 1500);
 }
 
 async function deployFarmManager() {
@@ -50,12 +53,57 @@ async function deployTresorBoostCore(farmManagerAddress, ownerAddress) {
     return tresorBoostCore;
 }
 
-async function deployVault(tokenAddress, apr) {
+async function deployVault(token, apr) {
     const Vault = await ethers.getContractFactory("Vault");
-    const vault = await Vault.deploy(tokenAddress, apr);
+    const vault = await Vault.deploy(token, apr);
     await vault.waitForDeployment();
     console.log("Vault deployed to:", await vault.getAddress());
+    await token.mint(await vault.getAddress(), ethers.parseEther("1000000000"));
     return vault;
+}
+
+async function deployMintFakeEURe(ownerAddress) {   
+    const FakeEURe = await ethers.getContractFactory("ERC20Mock");
+    const fakeEURe = await FakeEURe.deploy("Alyra EURO Monerium", "aEURe", 18);
+    await fakeEURe.waitForDeployment();
+    console.log("aEURe deployed to:", await fakeEURe.getAddress());
+    await fakeEURe.mint(ownerAddress, ethers.parseEther("1000000000"));
+    return fakeEURe;
+}
+
+async function deployMintFakeUSDT(ownerAddress) {
+    const FakeUSDT = await ethers.getContractFactory("ERC20Mock");
+    const fakeUSDT = await FakeUSDT.deploy("Alyra Tether USD", "aUSDT", 6);
+    await fakeUSDT.waitForDeployment();
+    console.log("aUSDT deployed to:", await fakeUSDT.getAddress());
+    await fakeUSDT.mint(ownerAddress, ethers.parseEther("1000000000"));
+    return fakeUSDT;
+}
+
+async function addLiquidityEUReUSDT(aEURe, aUSDT) {
+    const uniswapRouter = await ethers.getContractAt("IUniswapV2Router02", "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3");
+    const [owner] = await ethers.getSigners();
+    const amountEURe = ethers.parseEther("990000000");
+    const amountUSDT = ethers.parseEther("990000000");
+
+    await aEURe.approve(uniswapRouter.getAddress(), amountEURe);
+    await aUSDT.approve(uniswapRouter.getAddress(), amountUSDT);
+
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+    console.log("ON ARRIVE JUSQUE ICI")
+    const tx = await uniswapRouter.addLiquidity(
+        await aEURe.getAddress(),
+        await aUSDT.getAddress(),
+        amountEURe,
+        amountUSDT,
+        0, // amountEUReMin
+        0, // amountUSDTMin
+        owner.address,
+        deadline
+    );
+    
+    await tx.wait();
+    console.log("Liquidité ajoutée avec succès");
 }
 
 main().catch((e) => {
