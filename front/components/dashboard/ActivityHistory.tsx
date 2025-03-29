@@ -1,5 +1,5 @@
 import React from 'react'
-import { Table, TableBody, TableHead, TableRow } from './ui/table'
+import { Table, TableBody, TableHead, TableRow } from '../ui/table'
 
 const invoices = [
     {

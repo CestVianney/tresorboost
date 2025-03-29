@@ -3,7 +3,7 @@ import React from 'react'
 interface ProfileProps {
     profileName: string;
     value: number;
-    annualRate: number;
+    annualRate: string;
     monthlyGain: number;
     yearlyGain: number;
     bgColor?: string;

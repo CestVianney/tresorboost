@@ -4,6 +4,10 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FarmManager is Ownable {
+
+    event FarmAdded(address indexed farmAddress, address indexed depositToken, bool isActive, uint8 farmType);
+    event FarmUpdated(address indexed farmAddress, address indexed depositToken, bool isActive, uint8 farmType);
+
     struct FarmInfo {
         address farmAddress;
         address depositToken;
@@ -11,6 +15,7 @@ contract FarmManager is Ownable {
         bytes4 depositSelector;
         bytes4 withdrawSelector;
         bytes4 claimSelector;
+        uint8 farmType;
         uint16 rewardRate;
         bool isActive;
     }
@@ -22,6 +27,7 @@ contract FarmManager is Ownable {
     function addFarm(
         bool _isActive,
         uint16 _rewardRate,
+        uint8 _farmType,
         address _farmAddress,
         address _depositToken,
         address _rewardToken,
@@ -37,8 +43,11 @@ contract FarmManager is Ownable {
             rewardRate: _rewardRate,
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
-            claimSelector: bytes4(keccak256(bytes(_claimFunction)))
+            claimSelector: bytes4(keccak256(bytes(_claimFunction))),
+            farmType: _farmType
             });
+
+        emit FarmAdded(_farmAddress, _depositToken, _isActive, _farmType);
     }
 
     function getFarmInfo(address _farmAddress) public view returns (FarmInfo memory) {
@@ -47,5 +56,6 @@ contract FarmManager is Ownable {
 
     function setFarmInfo(address _farmAddress, FarmInfo memory _farmInfo) public onlyOwner {
         farms[_farmAddress] = _farmInfo;
+        emit FarmUpdated(_farmAddress, _farmInfo.depositToken, _farmInfo.isActive, _farmInfo.farmType);
     }
 }

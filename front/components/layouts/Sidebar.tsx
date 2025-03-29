@@ -1,6 +1,15 @@
-import React from "react"
+'use client';
+import React, { useState, useEffect } from "react"
+import { useAccount } from "wagmi"
+import { TBC_ADDRESS, TBC_ABI } from "@/constants/TresorBoostCoreContract"
+import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/FarmManagerContract"
+import { useReadContract } from "wagmi"
+import { checkOwnerage } from "@/hooks/useOwner"
 
 const Sidebar = ({ className }: { className?: string }) => {
+
+  const isOwner = checkOwnerage();
+
   return (
     <aside className={`p-4 bg-gray-800 text-white ${className}`}>
       <nav>
@@ -25,6 +34,13 @@ const Sidebar = ({ className }: { className?: string }) => {
               Mes attestations fiscales
             </a>
           </li>
+          {isOwner && (
+            <li>
+              <a href="/managefarms" className="block w-full text-left p-2 rounded hover:bg-gray-600">
+                Manage farms
+              </a>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>

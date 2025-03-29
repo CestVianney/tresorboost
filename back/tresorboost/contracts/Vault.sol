@@ -3,19 +3,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract MyVault {
+contract Vault {
     IERC20 public immutable token;
     mapping(address => uint256) public balances;
     mapping(address => uint256) public lastUpdateTime;
     mapping(address => uint256) public cumulatedRewards;
-    uint256 public constant APR = 500;
+    uint256 public APR;
 
     event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
 
-    constructor(address _token) {
+    constructor(address _token, uint16 _apr) {
         token = IERC20(_token);
+        APR = _apr;
     }
 
     function deposit(uint256 amount) external {

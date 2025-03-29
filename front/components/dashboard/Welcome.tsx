@@ -1,10 +1,10 @@
 import React from 'react'
 
-const Welcome = ({ username }: { username: string }) => {
+const Welcome = ({ username }: { username: string | undefined }) => {
   return (
     <div>
       <h1 className="font-bold text-3xl">
-        Welcome <span className="text-yellow-500">{username}</span> !
+        Bienvenue <span className="text-yellow-500">{username}</span> !
       </h1>
     </div>
   )
