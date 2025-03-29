@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FarmManager is Ownable {
 
-    event FarmAdded(address indexed farmAddress, address indexed depositToken, bool isActive, uint8 farmType);
+    event FarmAdded(address indexed farmAddress);
     event FarmUpdated(address indexed farmAddress, address indexed depositToken, bool isActive, uint8 farmType);
 
     struct FarmInfo {
@@ -47,7 +47,7 @@ contract FarmManager is Ownable {
             farmType: _farmType
             });
 
-        emit FarmAdded(_farmAddress, _depositToken, _isActive, _farmType);
+        emit FarmAdded(_farmAddress);
     }
 
     function getFarmInfo(address _farmAddress) public view returns (FarmInfo memory) {

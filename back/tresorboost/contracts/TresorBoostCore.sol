@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./FarmManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "hardhat/console.sol";
 
 contract TresorBoostCore is Ownable {
     struct DepositInfo {
@@ -14,8 +15,12 @@ contract TresorBoostCore is Ownable {
         uint256 lastTimeRewardCalculated;
     }
 
+    error InsufficientBalance();
+    error InactiveFarm();
+
     event Deposit(address indexed user, address indexed pool, uint256 amount);
     event Withdraw(address indexed user, address indexed pool, uint256 amount);
+
     
     mapping(address => mapping(address => DepositInfo)) public deposits;
 
@@ -37,11 +42,10 @@ contract TresorBoostCore is Ownable {
     }
 
     function depositTo(address _toContract, uint256 _amount) public {
-        require(IERC20(eureToken).balanceOf(msg.sender) >= _amount);
-        require(IERC20(eureToken).transferFrom(msg.sender, address(this), _amount), "Transfer failed");
-
-        require(farmManager.getFarmInfo(_toContract).isActive, "Farm is not active");
+        require(IERC20(eureToken).balanceOf(msg.sender) >= _amount, InsufficientBalance());
+        require(IERC20(eureToken).transferFrom(msg.sender, address(this), _amount));
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_toContract);
+        require(farmInfo.isActive, InactiveFarm());
 
         // Approuver le Router pour dépenser les EURe
         require(IERC20(eureToken).approve(address(router), _amount), "Approve failed");
@@ -128,6 +132,7 @@ contract TresorBoostCore is Ownable {
     }
 
     function _updateDepositInfo(address user, address pool, uint256 depositAmount, uint256 withdrawAmount) private {
+        updateRewards(pool);
         DepositInfo memory depositInfo = deposits[user][pool];
         deposits[user][pool] = DepositInfo({
             pool: pool,
@@ -154,14 +159,14 @@ contract TresorBoostCore is Ownable {
         }
     }
 
-    function updateRewards(address _pool) private view {
+    function updateRewards(address _pool) private {
         DepositInfo memory depositInfo = deposits[msg.sender][_pool];
         if(depositInfo.lastTimeRewardCalculated == 0) {
             return;
         }
         uint256 timeSinceLastReward = block.timestamp - depositInfo.lastTimeRewardCalculated;
         uint256 rewardAmount = (depositInfo.amount * farmManager.getFarmInfo(_pool).rewardRate * timeSinceLastReward) / (365 days * 10000);
-        depositInfo.rewardAmount += rewardAmount;
-        depositInfo.lastTimeRewardCalculated = block.timestamp;
+        deposits[msg.sender][_pool].rewardAmount += rewardAmount;
+
     }
 }

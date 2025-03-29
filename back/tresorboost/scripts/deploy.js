@@ -41,8 +41,8 @@ async function deploySwapManager() {
 }
 
 async function deployTresorBoostCore(farmManagerAddress, ownerAddress) {
-    const EUReAddress = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
-    const routerAddress = "0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f";
+    const EUReAddress = "0x67b34b93ac295c985e856E5B8A20D83026b580Eb";
+    const routerAddress = "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3";
     const TresorBoostCore = await ethers.getContractFactory("TresorBoostCore");
     const tresorBoostCore = await TresorBoostCore.deploy(farmManagerAddress, ownerAddress, EUReAddress, routerAddress);
     await tresorBoostCore.waitForDeployment();
