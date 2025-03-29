@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+require("hardhat-tracer");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -14,21 +15,13 @@ module.exports = {
     }
   },
   networks: {
-    hardhat: {
-      forking: {
-        enabled: true,
-        url: process.env.ETH_RPC_URL,
-        blockNumber: 21423360,
-      },
-      initialBaseFeePerGas: 1000000000, // 1 gwei
-      gasPrice: 10000000000, // 10 gwei
-    },
     localhost: {
       forking: {
         enabled: true,
         url: process.env.ETH_RPC_URL,
+        chainId: 11155111,
       },
-      blockNumber: 21423360,
+      blockNumber: 8006851,
       gasPrice: 100000000000
     }
   }
