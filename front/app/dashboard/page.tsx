@@ -8,15 +8,16 @@ import { Separator } from "@/components/ui/separator"
 import { useExistingFarms } from '@/hooks/useFarms'
 import { useAccount, useReadContract } from 'wagmi'
 import { EURE_ADDRESS, EURE_ABI } from '@/constants/EUReContract'
-
+import { useEventData } from '@/hooks/useEventData'
+import { UserActivityData } from '@/constants/UserActivityData'
 
 export default function Dashboard() {
 
     const { farms } = useExistingFarms()
     const { address } = useAccount()
+    const { userActivity as UserActivityData } = useEventData()
 
     const [balance, setBalance] = useState<BigInt>(BigInt(0))
-
     const { data: balanceData } = useReadContract({
         address: EURE_ADDRESS, 
         abi: EURE_ABI,
@@ -29,7 +30,7 @@ export default function Dashboard() {
           console.log("BALANCE DATA",balanceData)
           setBalance(balanceData as BigInt)
         }
-      }, [balanceData])
+      }, [balanceData, userActivity])
 
     return (
         <div className="flex flex-col items-center h-screen">

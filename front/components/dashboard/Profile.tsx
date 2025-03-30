@@ -4,6 +4,7 @@ import { TBC_ADDRESS } from '@/constants/TresorBoostCoreContract';
 import { EURE_ABI, EURE_ADDRESS } from '@/constants/EUReContract';
 import React, { useState } from 'react'
 import { useWriteContract } from 'wagmi';
+import { formatEther, parseEther } from 'viem';
 
 interface ProfileProps {
     pool: string;
@@ -25,26 +26,63 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
 
     const handleDeposit = async (_toPool: string, _amount: number) => {
         try {
-            await writeContract({
+            const amountInWei = parseEther(_amount.toString());
+            
+            console.log("=== DÉBUT DU DÉPÔT ===");
+            console.log("Montant à déposer:", _amount);
+            console.log("Montant en wei:", amountInWei.toString());
+            console.log("Adresse du pool:", _toPool);
+            console.log("Adresse TBC:", TBC_ADDRESS);
+            console.log("Adresse EURe:", EURE_ADDRESS);
+            console.log("Solde actuel:", balance.toString());
+            console.log("Solde en EURe:", Number(balance) / 1e18);
+            
+            if (Number(balance) < Number(amountInWei)) {
+                throw new Error("Solde insuffisant pour ce dépôt");
+            }
+            
+            console.log("=== APPROBATION ===");
+            console.log("Vérification de l'allowance actuelle...");
+            
+            const approveTx = await writeContract({
                 address: EURE_ADDRESS,
                 abi: EURE_ABI,
-                functionName: "approve",
-                args: [TBC_ADDRESS, BigInt(_amount) * BigInt(1e18)],
+                functionName: 'approve',
+                args: [TBC_ADDRESS, amountInWei],
             });
 
-            console.log("POOL SELECTED", _toPool, "AMOUNT", _amount);
+            console.log("Hash de l'approbation:", approveTx);
+            console.log("En attente de confirmation...");
+            
+            // Attendre la confirmation de l'approbation
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            const tx = await writeContract({
+            console.log("=== DÉPÔT ===");
+            console.log("Début du dépôt vers le pool:", _toPool);
+            console.log("Vérification des paramètres de dépôt:");
+            console.log("- Pool:", _toPool);
+            console.log("- Montant:", amountInWei.toString());
+            console.log("- TBC:", TBC_ADDRESS);
+            
+            const depositTx = await writeContract({
                 address: TBC_ADDRESS,
                 abi: TBC_ABI,
-                functionName: "depositTo",
-                args: [_toPool, BigInt(_amount) * BigInt(1e18)],
+                functionName: 'depositTo',
+                args: [_toPool, amountInWei],
             });
+
+            console.log("Hash du dépôt:", depositTx);
+            console.log("=== FIN DU DÉPÔT ===");
             
             setIsDepositModalOpen(false);
             setDepositAmount('');
-        } catch (error) {
-            console.error("Error during deposit", error);
+        } catch (error: any) {
+            console.error("=== ERREUR DÉTAILLÉE ===");
+            console.error("Type d'erreur:", error?.name);
+            console.error("Message d'erreur:", error?.message);
+            console.error("Données d'erreur:", error?.data);
+            console.error("Code d'erreur:", error?.code);
+            console.error("Objet d'erreur complet:", error);
             throw error;
         }
     }
@@ -82,10 +120,10 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
                     <div className="bg-white p-6 rounded-lg shadow-xl w-96">
                         <h3 className="text-xl font-bold text-center mb-6">Déposer des EURe</h3>
                         <div className="relative">
-                            <div className="absolute -top-4 right-2 bg-white px-4 py-1  shadow-sm">
+                            <div className="absolute -top-4 right-2 bg-white px-4 py-1">
                                 <span className="text-sm text-gray-600">Solde disponible :</span>
                                 <span className="ml-2 font-semibold text-yellow-500">
-                                    {balance ? Number(balance) / 1e18 : '0'} EURe
+                                    {balance ? formatEther(balance as bigint) : '0'} EURe
                                 </span>
                             </div>
                             <input

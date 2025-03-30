@@ -1,5 +1,6 @@
 import React from 'react'
 import { Table, TableBody, TableHead, TableRow } from '../ui/table'
+import { useEventData } from '../../hooks/useEventData'
 
 const invoices = [
     {
@@ -30,6 +31,7 @@ const formatNumber = (number: string) => {
 }
 
 const ActivityHistory = () => {
+    const { userActivity } = useEventData()
     return (
         <div>
             <div className='mt-2 text-2xl'>Historique des opérations</div>
