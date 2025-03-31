@@ -19,10 +19,8 @@ const main = async () => {
     const aUSDT = await deployMintFakeUSDT(owner.address);
     console.log("------------------------------ADD LIQUIDITY EURe USDT------------------------------");
     await addLiquidityEUReUSDT(aEURe, aUSDT);
-    console.log("------------------------------DEPLOY VAULT 4%------------------------------");
-    const vaultUSDC4 = await deployVault(aUSDT, 400);
-    console.log("------------------------------DEPLOY VAULT 7.5%------------------------------");
-    const vaultUSDT75 = await deployVault(aUSDT, 750);
+    console.log("------------------------------DEPLOY VAULT 6%------------------------------");
+    const vaultUSDT75 = await deployVault(aUSDT, 600);
     console.log("------------------------------DEPLOY VAULT 10%------------------------------");
     const vaultUSDC10 = await deployVault(aUSDT, 1000);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
@@ -91,15 +89,18 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
     await aEURe.approve(uniswapRouter.getAddress(), amountEURe);
     await aUSDT.approve(uniswapRouter.getAddress(), amountUSDT);
 
-    const pair = await uniswapFactory.getPair(await aEURe.getAddress(), await aUSDT.getAddress());
-    if (!pair) {
+    let pair = await uniswapFactory.getPair(await aEURe.getAddress(), await aUSDT.getAddress());
+    if (pair === ethers.ZeroAddress) {
+        console.log("Paire non trouvée, création de la paire...");
         const transaction = await uniswapFactory.createPair(
             await aEURe.getAddress(),
             await aUSDT.getAddress()
         );
         await transaction.wait();
+        console.log("Paire créée avec succès, tx hash : ", await transaction.hash);
         pair = await uniswapFactory.getPair(await aEURe.getAddress(), await aUSDT.getAddress());
     }
+    console.log("Paire trouvée", pair);
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
     console.log("ON ARRIVE JUSQUE ICI")
     const tx = await uniswapRouter.addLiquidity(

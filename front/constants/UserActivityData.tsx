@@ -4,4 +4,5 @@ export interface UserActivityData {
     pool: string;
     amount: number;
     blockNumber: BigInt;
+    timestamp: number;
 }

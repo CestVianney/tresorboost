@@ -6,7 +6,7 @@ import { FarmData } from "@/constants/FarmData";
 import { parseAbiItem } from "viem";
 import { useWatchContractEvent } from "wagmi";
 import { BlockTag } from "viem";
-import { formatEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { UserActivityData } from "@/constants/UserActivityData";
 
 export const useEventData = () => {
@@ -69,17 +69,18 @@ export const useEventData = () => {
         });
 
         // Formater les événements
-        const formattedEvents = allEvents.map((event): UserActivityData => {
+        const formattedEvents = await Promise.all(allEvents.map(async (event): Promise<UserActivityData> => {
             const isDeposit = event.eventName === 'Deposit';
+            const block = await publicClient.getBlock({ blockNumber: event.blockNumber ?? BigInt(0) });
             return {
                 type: isDeposit ? 'deposit' : 'withdraw',
                 user: event.args.user ?? '0x0',
                 pool: event.args.pool ?? '0x0',
-                amount: Number(event.args.amount),
-                blockNumber: event.blockNumber ?? BigInt(0)
+                amount: Number(formatEther(event.args.amount ?? BigInt(0))),
+                blockNumber: event.blockNumber ?? BigInt(0),
+                timestamp: Number(block.timestamp)
             };
-        });
-        console.log("formattedEvents", formattedEvents);
+        }));
         setUserActivity(formattedEvents);
         return formattedEvents;
     }

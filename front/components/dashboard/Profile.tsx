@@ -5,6 +5,7 @@ import { EURE_ABI, EURE_ADDRESS } from '@/constants/EUReContract';
 import React, { useState } from 'react'
 import { useWriteContract } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
+import { formatNumberFromNumber } from '@/utils/utils';
 
 interface ProfileProps {
     pool: string;
@@ -27,62 +28,26 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
     const handleDeposit = async (_toPool: string, _amount: number) => {
         try {
             const amountInWei = parseEther(_amount.toString());
-            
-            console.log("=== DÉBUT DU DÉPÔT ===");
-            console.log("Montant à déposer:", _amount);
-            console.log("Montant en wei:", amountInWei.toString());
-            console.log("Adresse du pool:", _toPool);
-            console.log("Adresse TBC:", TBC_ADDRESS);
-            console.log("Adresse EURe:", EURE_ADDRESS);
-            console.log("Solde actuel:", balance.toString());
-            console.log("Solde en EURe:", Number(balance) / 1e18);
-            
             if (Number(balance) < Number(amountInWei)) {
                 throw new Error("Solde insuffisant pour ce dépôt");
             }
-            
-            console.log("=== APPROBATION ===");
-            console.log("Vérification de l'allowance actuelle...");
-            
             const approveTx = await writeContract({
                 address: EURE_ADDRESS,
                 abi: EURE_ABI,
                 functionName: 'approve',
                 args: [TBC_ADDRESS, amountInWei],
             });
-
-            console.log("Hash de l'approbation:", approveTx);
-            console.log("En attente de confirmation...");
-            
             // Attendre la confirmation de l'approbation
             await new Promise(resolve => setTimeout(resolve, 2000));
-
-            console.log("=== DÉPÔT ===");
-            console.log("Début du dépôt vers le pool:", _toPool);
-            console.log("Vérification des paramètres de dépôt:");
-            console.log("- Pool:", _toPool);
-            console.log("- Montant:", amountInWei.toString());
-            console.log("- TBC:", TBC_ADDRESS);
-            
             const depositTx = await writeContract({
                 address: TBC_ADDRESS,
                 abi: TBC_ABI,
                 functionName: 'depositTo',
                 args: [_toPool, amountInWei],
             });
-
-            console.log("Hash du dépôt:", depositTx);
-            console.log("=== FIN DU DÉPÔT ===");
-            
             setIsDepositModalOpen(false);
             setDepositAmount('');
         } catch (error: any) {
-            console.error("=== ERREUR DÉTAILLÉE ===");
-            console.error("Type d'erreur:", error?.name);
-            console.error("Message d'erreur:", error?.message);
-            console.error("Données d'erreur:", error?.data);
-            console.error("Code d'erreur:", error?.code);
-            console.error("Objet d'erreur complet:", error);
             throw error;
         }
     }
@@ -91,17 +56,17 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
         <>
             <div className={`w-64 p-6 rounded-xl shadow-lg ${bgColor} ${textColor} text-center`}>
                 <h2 className="font-bold text-lg">{`Profil ${profileName.toUpperCase()}`}</h2>
-                <p className="text-3xl font-bold my-2">{`${value} €`}</p>
+                <p className="text-3xl font-bold my-2">{`${formatNumberFromNumber(value)} €`}</p>
                 <p className="text-md font-semibold">Taux annualisé : {annualRate}%</p>
 
                 <div className="flex justify-between mt-4 font-semibold">
                     <div className='shadow-lg p-2 rounded-lg'>
                         <p>Ce mois</p>
-                        <p className='text-green-500'>{`${monthlyGain} €`}</p>
+                        <p className='text-green-500'>{`${formatNumberFromNumber(monthlyGain)} €`}</p>
                     </div>
                     <div className='shadow-lg p-2 rounded-lg'>
                         <p>Cette année</p>
-                        <p className='text-green-500'>{`${yearlyGain} €`}</p>
+                        <p className='text-green-500'>{`${formatNumberFromNumber(yearlyGain)} €`}</p>
                     </div>
                 </div>
                 <div className="flex justify-between mt-4 font-bold">

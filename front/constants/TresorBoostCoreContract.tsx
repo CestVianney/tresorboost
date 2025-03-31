@@ -274,4 +274,4 @@ export const TBC_ABI =  [
     "type": "function"
   }
 ]
-export const TBC_ADDRESS = "0x2CFB40362D6f90E16208BeED4a3DC6e90D3f7a87"
+export const TBC_ADDRESS = "0x7dd5e200bb76acc0A0f7bf077bF7808b3c6A5999"
