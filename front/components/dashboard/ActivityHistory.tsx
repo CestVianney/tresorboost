@@ -1,35 +1,37 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Table, TableBody, TableHead, TableRow } from '../ui/table'
+import { UserActivityData } from '../../constants/UserActivityData'
+import { formatNumberFromNumber, formatDateFromTimestamp } from '../../utils/utils'
+import { FarmData } from '../../constants/FarmData'
+import { FarmTypeEnum } from '@/enums/FarmTypeEnum'
+const ActivityHistory = ({ userActivity, farms }: { userActivity: UserActivityData[], farms: FarmData[] }) => {
+    const [activity, setActivity] = useState<UserActivityData[]>([])
+    useEffect(() => {
+        setActivity(userActivity)
+    }, [userActivity])
 
-const invoices = [
-    {
-        date: "12/03/2025",
-        action: "Versement sur profil DYNAMIQUE",
-        totalAmount: "3000",
-    },
-    {
-        date: "11/03/2025",
-        action: "Dépôt de trésorerie",
-        totalAmount: "10000",
-    },
-    {
-        date: "11/03/2025",
-        action: "Retrait du profil PRUDENT",
-        totalAmount: "-3000",
-    },
-    {
-        date: "01/03/2025",
-        action: "Versmeent intérêts sur profil PRUDENT",
-        totalAmount: "100",
+    const formatActivityType = (type: string, pool: string) => {
+        switch (type) {
+            case 'deposit':
+                return 'Dépot sur profil ' + formatFarmName(pool)
+            case 'withdraw':
+                return 'Retrait'
+        }
     }
 
-]
-
-const formatNumber = (number: string) => {
-    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-}
-
-const ActivityHistory = () => {
+    const formatFarmName = (farmId: string) => {
+        const farm = farms.find(farm => farm.farmAddress === farmId)
+        console.log(FarmTypeEnum.PRUDENT)
+        console.log(farm?.farmType)
+        if (farm?.farmType === FarmTypeEnum.PRUDENT) {
+            return 'PRUDENT'
+        } else if (farm?.farmType === FarmTypeEnum.EQUILIBRE) {
+            return 'EQUILIBRE'
+        } else {            
+            return 'DYNAMIQUE'
+        }
+        
+    }
     return (
         <div>
             <div className='mt-2 text-2xl'>Historique des opérations</div>
@@ -40,12 +42,12 @@ const ActivityHistory = () => {
                     <TableHead className='w-[20%]'>Amount</TableHead>
                 </TableRow>
                 <TableBody>
-                    {invoices.map((invoice, index) => (
+                    {activity.map((activity: UserActivityData, index) => (
                         <TableRow key={index}>
-                            <td className='text-xl'>{invoice.date}</td>
-                            <td className='text-xl'>{invoice.action}</td>
-                            <td className={`text-xl ${parseFloat(invoice.totalAmount) < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                {parseFloat(invoice.totalAmount) > 0 ? '+' + formatNumber(invoice.totalAmount) + ' €' : formatNumber(invoice.totalAmount) + ' €'}
+                            <td className='text-xl'>{formatDateFromTimestamp(activity.timestamp)}</td>
+                            <td className='text-xl'>{formatActivityType(activity.type, activity.pool)}</td>
+                            <td className={`text-xl ${activity.amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                {activity.amount > 0 ? '+' + formatNumberFromNumber(activity.amount) + ' €' : formatNumberFromNumber(activity.amount) + ' €'}
                             </td>
                         </TableRow>
                     ))}

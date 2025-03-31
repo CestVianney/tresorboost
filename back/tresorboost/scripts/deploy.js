@@ -1,7 +1,9 @@
 const { ethers } = require("hardhat");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
+const IUniswapV2Factory = require("@uniswap/v2-core/build/IUniswapV2Factory.json");
 
 const main = async () => {
+    console.log("ABI Loaded: ", IUniswapV2Factory.abi ? "✅" : "❌");
     const [owner] = await ethers.getSigners();
     console.log(`Deploying with account: ${owner.address}`);
 
@@ -9,18 +11,16 @@ const main = async () => {
     const farmManager = await deployFarmManager();
     // console.log("------------------------------DEPLOY SWAP MANAGER------------------------------");
     // const swapManager = await deploySwapManager();
-    console.log("------------------------------DEPLOY TRESOR BOOST CORE-------------------------");
-    const tresorBoostCore = await deployTresorBoostCore(await farmManager.getAddress(), await owner.getAddress());
     console.log("------------------------------DEPLOY FAKE EURe------------------------------");
     const aEURe = await deployMintFakeEURe(owner.address);
+    console.log("------------------------------DEPLOY TRESOR BOOST CORE-------------------------");
+    const tresorBoostCore = await deployTresorBoostCore(await farmManager.getAddress(), await owner.getAddress(), await aEURe.getAddress());
     console.log("------------------------------DEPLOY FAKE USDT------------------------------");
     const aUSDT = await deployMintFakeUSDT(owner.address);
     console.log("------------------------------ADD LIQUIDITY EURe USDT------------------------------");
     await addLiquidityEUReUSDT(aEURe, aUSDT);
-    console.log("------------------------------DEPLOY VAULT 4%------------------------------");
-    const vaultUSDC4 = await deployVault(aUSDT, 400);
-    console.log("------------------------------DEPLOY VAULT 7.5%------------------------------");
-    const vaultUSDT75 = await deployVault(aUSDT, 750);
+    console.log("------------------------------DEPLOY VAULT 6%------------------------------");
+    const vaultUSDT75 = await deployVault(aUSDT, 600);
     console.log("------------------------------DEPLOY VAULT 10%------------------------------");
     const vaultUSDC10 = await deployVault(aUSDT, 1000);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
@@ -43,11 +43,10 @@ async function deploySwapManager() {
     return swapManager;
 }
 
-async function deployTresorBoostCore(farmManagerAddress, ownerAddress) {
-    const EUReAddress = "0x67b34b93ac295c985e856E5B8A20D83026b580Eb";
+async function deployTresorBoostCore(farmManagerAddress, ownerAddress, aEUReAddress) {
     const routerAddress = "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3";
     const TresorBoostCore = await ethers.getContractFactory("TresorBoostCore");
-    const tresorBoostCore = await TresorBoostCore.deploy(farmManagerAddress, ownerAddress, EUReAddress, routerAddress);
+    const tresorBoostCore = await TresorBoostCore.deploy(farmManagerAddress, ownerAddress, aEUReAddress, routerAddress);
     await tresorBoostCore.waitForDeployment();
     console.log("TresorBoostCore deployed to:", await tresorBoostCore.getAddress());
     return tresorBoostCore;
@@ -81,6 +80,7 @@ async function deployMintFakeUSDT(ownerAddress) {
 }
 
 async function addLiquidityEUReUSDT(aEURe, aUSDT) {
+    const uniswapFactory = await ethers.getContractAt(IUniswapV2Factory.abi, "0xF62c03E08ada871A0bEb309762E260a7a6a880E6");
     const uniswapRouter = await ethers.getContractAt("IUniswapV2Router02", "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3");
     const [owner] = await ethers.getSigners();
     const amountEURe = ethers.parseEther("990000000");
@@ -89,6 +89,18 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
     await aEURe.approve(uniswapRouter.getAddress(), amountEURe);
     await aUSDT.approve(uniswapRouter.getAddress(), amountUSDT);
 
+    let pair = await uniswapFactory.getPair(await aEURe.getAddress(), await aUSDT.getAddress());
+    if (pair === ethers.ZeroAddress) {
+        console.log("Paire non trouvée, création de la paire...");
+        const transaction = await uniswapFactory.createPair(
+            await aEURe.getAddress(),
+            await aUSDT.getAddress()
+        );
+        await transaction.wait();
+        console.log("Paire créée avec succès, tx hash : ", await transaction.hash);
+        pair = await uniswapFactory.getPair(await aEURe.getAddress(), await aUSDT.getAddress());
+    }
+    console.log("Paire trouvée", pair);
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
     console.log("ON ARRIVE JUSQUE ICI")
     const tx = await uniswapRouter.addLiquidity(
