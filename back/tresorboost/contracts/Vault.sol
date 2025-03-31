@@ -19,39 +19,29 @@ contract Vault {
         APR = _apr;
     }
 
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount, address user) external {
         require(amount > 0, "Amount must be greater than 0");
         
         require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
-        balances[msg.sender] += amount;
-        lastUpdateTime[msg.sender] = block.timestamp;
+        balances[user] += amount;
+        lastUpdateTime[user] = block.timestamp;
 
-        emit Deposited(msg.sender, amount);
+        emit Deposited(user, amount);
     }
 
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount, address user) external {
         require(amount > 0, "Amount must be greater than 0");
-        require(balances[msg.sender] >= amount, "Insufficient balance");
+        require(balances[user] >= amount, "Insufficient balance");
 
-        uint256 rewards = _distributeRewards(msg.sender);
+        uint256 rewards = _distributeRewards(user);
         uint256 totalAmount = amount + rewards;
-        balances[msg.sender] -= totalAmount;
-        lastUpdateTime[msg.sender] = block.timestamp;
+        balances[user] -= totalAmount;
+        lastUpdateTime[user] = block.timestamp;
 
         require(token.transfer(msg.sender, totalAmount), "Transfer failed");
 
-        emit Withdrawn(msg.sender, totalAmount);
-    }
-
-    function claimRewards() external {
-        uint256 rewards = _calculateRewards(msg.sender);
-        require(rewards > 0, "No rewards to claim");
-
-        balances[msg.sender] += rewards;
-        lastUpdateTime[msg.sender] = block.timestamp;
-
-        emit RewardsClaimed(msg.sender, rewards);
+        emit Withdrawn(user, totalAmount);
     }
 
     function _distributeRewards(address user) internal returns (uint256) {
