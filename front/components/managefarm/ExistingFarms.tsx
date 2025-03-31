@@ -49,7 +49,6 @@ const ExistingFarms = () => {
     };
 
     const handlerAddFarm = async () => {
-        console.log(isActive, rewardRate, farmType, farmAddress, depositTokenAddress, rewardTokenAddress, depositFunction, withdrawFunction, claimFunction);
         try {
             await writeContract({
                 address: FARM_MANAGER_ADDRESS,

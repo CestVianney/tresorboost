@@ -18,7 +18,7 @@ import { formatNumberFromNumber } from '@/utils/utils'
 export default function Dashboard() {
 
     const { farms } = useExistingFarms()
-    const { address } = useAccount()
+    const { address, isConnected } = useAccount()
     const { userActivity } = useEventData()
 
     const [balance, setBalance] = useState<BigInt>(BigInt(0))
@@ -27,7 +27,10 @@ export default function Dashboard() {
         abi: EURE_ABI,
         functionName: 'balanceOf',
         args: [address as `0x${string}`],
-      })
+        query: {
+            enabled: !!address
+        }
+    })
     
     const [userData, setUserData] = useState<DepositData[]>([])
 
@@ -46,17 +49,19 @@ export default function Dashboard() {
 
     const { data: data } = useReadContracts({
         contracts: contracts,
-        query: {enabled: userActivity.length > 0}
-      })
+        query: {enabled: userActivity.length > 0 && !!address}
+    })
 
-
-
-      useEffect(() => {
-        if (balanceData) {
-          setBalance(balanceData as BigInt)
+    useEffect(() => {
+        if (!isConnected || !address) {
+            setBalance(BigInt(0));
+            setUserData([]);
+            return;
         }
+        
+        setBalance(balanceData ? balanceData as BigInt : BigInt(0));
+        
         if (data) {
-            console.log(data);
             const validData: DepositData[] = data
                 .filter((item): item is { result: { amount: bigint; rewardAmount: bigint; lastTimeRewardCalculated: bigint; pool: string }; status: "success" } => 
                     item.status === "success" && item.result !== undefined)
@@ -71,9 +76,9 @@ export default function Dashboard() {
                 });
             setUserData(validData);
         }
-      }, [balanceData, data])
+    }, [isConnected, address, balanceData, data])
 
-      const calculateRewards = () => {
+    const calculateRewards = () => {
         const pools = userActivity.reduce((acc: Record<string, UserActivityData[]>, curr) => {
             const pool = curr.pool;
             if (!acc[pool]) {
@@ -99,11 +104,8 @@ export default function Dashboard() {
                 rewardRate = farm.rewardRate/10000;
             }
 
-
-            console.log("pools[pool] : ", pools[pool]);
             // Convertir le timestamp en secondes
             const lastEventTimestamp = Math.floor(Date.now() / 1000);
-            console.log("Timestamp actuel (secondes):", lastEventTimestamp);
             for (const event of pools[pool]) {
                 const adjustedTimestamp = event.timestamp + (27 * 60); // Ajouter 27 minutes
                 if (event.type === 'deposit') {
@@ -130,7 +132,6 @@ export default function Dashboard() {
             }
         }
         
-        console.log("totalRewards", totalRewards);
         return {
             totalRewards: Number(formatNumberFromNumber(totalRewards)),
             lastMinuteRewards: Number(formatNumberFromNumber(lastMinuteRewards)),

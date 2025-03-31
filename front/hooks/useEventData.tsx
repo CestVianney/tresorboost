@@ -2,21 +2,21 @@ import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/FarmManagerC
 import { TBC_ADDRESS } from "@/constants/TresorBoostCoreContract";
 import { publicClient } from "@/utils/publicClient";
 import { useEffect, useState } from "react";
-import { FarmData } from "@/constants/FarmData";
 import { parseAbiItem } from "viem";
-import { useWatchContractEvent } from "wagmi";
-import { BlockTag } from "viem";
+import { useWatchContractEvent, useAccount } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { UserActivityData } from "@/constants/UserActivityData";
 
 export const useEventData = () => {
-
     const [existingFarms, setExistingFarms] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [userActivity, setUserActivity] = useState<UserActivityData[]>([]);
+    const { address, isConnected } = useAccount();
 
     useEffect(() => {
         const fetchInitialData = async () => {
+            if (!isConnected || !address) return;
+            
             setIsLoading(true);
             await Promise.all([
                 handleExistingFarms(),
@@ -25,7 +25,7 @@ export const useEventData = () => {
             setIsLoading(false);
         }
         fetchInitialData();
-    }, []);
+    }, [isConnected, address]);
 
     const handleExistingFarms = async () => {
         const farmAddresses = await publicClient.getLogs({
@@ -47,10 +47,15 @@ export const useEventData = () => {
     }
 
     const handleUserActivity = async () => {
-        // Récupérer les dépôts
+        if (!isConnected || !address) return;
+        
+        console.log("address", address);
         const deposits = await publicClient.getLogs({
             address: TBC_ADDRESS,
             event: parseAbiItem("event Deposit(address indexed user, address indexed pool, uint256 amount)"),
+            args: {
+                user: address
+            },
             fromBlock: BigInt(`${process.env.NEXT_PUBLIC_BLOCK_NUMBER}`),
             toBlock: 'latest'
         });
@@ -59,6 +64,9 @@ export const useEventData = () => {
         const withdrawals = await publicClient.getLogs({
             address: TBC_ADDRESS,
             event: parseAbiItem("event Withdraw(address indexed user, address indexed pool, uint256 amount)"),
+            args: {
+                user: address
+            },
             fromBlock: BigInt(`${process.env.NEXT_PUBLIC_BLOCK_NUMBER}`),
             toBlock: 'latest'
         });
