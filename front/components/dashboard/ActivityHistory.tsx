@@ -21,8 +21,6 @@ const ActivityHistory = ({ userActivity, farms }: { userActivity: UserActivityDa
 
     const formatFarmName = (farmId: string) => {
         const farm = farms.find(farm => farm.farmAddress === farmId)
-        console.log(FarmTypeEnum.PRUDENT)
-        console.log(farm?.farmType)
         if (farm?.farmType === FarmTypeEnum.PRUDENT) {
             return 'PRUDENT'
         } else if (farm?.farmType === FarmTypeEnum.EQUILIBRE) {

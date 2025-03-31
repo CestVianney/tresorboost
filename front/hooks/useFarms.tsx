@@ -10,6 +10,7 @@ export const useExistingFarms = () => {
   const { existingFarms } = useEventData();
 
   const farmAddresses = existingFarms;
+  console.log("farmAddresses", farmAddresses);
 
   const contracts = farmAddresses.map((farm) => ({
     abi: FARM_MANAGER_ABI as Abi,
