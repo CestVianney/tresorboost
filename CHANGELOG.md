@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/CestVianney/tresorboost/compare/v1.1.1...v1.1.2) (2025-03-31)
+
+
+### Bug Fixes
+
+* back update deploy ([6b81c41](https://github.com/CestVianney/tresorboost/commit/6b81c41901e2d5e809c6e28f3b830fed95c4662a))
+
 ## [1.1.2](https://github.com/CestVianney/tresorboost/compare/v1.1.1...v1.1.2) (2025-03-29)
 
 
