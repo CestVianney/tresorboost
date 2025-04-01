@@ -123,9 +123,9 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
 
 async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDC10, vaultUSDT15) {
     const farms = [
-        { vault: vaultUSDT75, farmType: 0, rate: 900 },
-        { vault: vaultUSDC10, farmType: 1, rate: 1200 },
-        { vault: vaultUSDT15, farmType: 2, rate: 1500 },
+        { vault: vaultUSDT75, farmType: 0, rate: 400 },
+        { vault: vaultUSDC10, farmType: 1, rate: 600 },
+        { vault: vaultUSDT15, farmType: 2, rate: 800 },
     ];
 
     for (const farm of farms) {
@@ -136,9 +136,10 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDC10, v
             farm.vault,
             usdtAddress,
             ZeroAddress,
-            "deposit(uint256)",
-            "withdraw(uint256)",
-            "getRewards(address)"
+            "deposit(uint256,address)",
+            "withdraw(uint256,address)",
+            "getRewards(address)",
+            false
         );
     }
 }

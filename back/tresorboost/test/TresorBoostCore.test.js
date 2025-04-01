@@ -57,19 +57,32 @@ describe("TresorBoostCore", function () {
         const Vault = await ethers.getContractFactory("Vault");
         const vault = await Vault.deploy(
             USDTAddress,
-            1000
+            1200
         );
         await vault.waitForDeployment();
-        const vaultAddress = await vault.getAddress();
 
         await tresorBoostCore.waitForDeployment();
 
         // Mint des tokens pour le test
-        const amountEURe = ethers.parseEther("10000"); // 10000 EURe
-        const amountUSDT = ethers.parseEther("10000"); // 10000 USDT
+        const amountEURe = ethers.parseEther("100002000"); // 100M EURe liq, 2k tests
+        const amountUSDT = ethers.parseEther("100100000"); // 100M USDT liq, 100k vault
 
         await EURe.mint(owner.address, amountEURe);
         await USDT.mint(owner.address, amountUSDT);
+
+        await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+        await farmManager.addFarm(
+            true,
+            1000,
+            2,
+            await vault.getAddress(),
+            await USDT.getAddress(),
+            constants.ZERO_ADDRESS,
+            "deposit(uint256,address)",
+            "withdraw(uint256,address)",
+            "0x00000000",
+            false
+        );
 
         return {
             tresorBoostCore,
@@ -86,129 +99,115 @@ describe("TresorBoostCore", function () {
         };
     }
 
-    beforeEach(async function () {
-        const { vault, tresorBoostCore, farmManager, swapManager, EURe, USDT, owner, account2, account3 } = await loadFixture(deployTresorBoostCoreFixture);
-        await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
-        await farmManager.addFarm(
-            true,
-            1000,
-            2,
-            await vault.getAddress(),
-            EURe.getAddress(),
-            constants.ZERO_ADDRESS,
-            "deposit(uint256,address)",
-            "withdraw(uint256,address)",
-            constants.HashZero
-        );
-    });
+    describe("Deployment", function () {
+        it("should deploy the contract", async function () {
+            const { tresorBoostCore } = await loadFixture(deployTresorBoostCoreFixture);
+            expect(await tresorBoostCore.getAddress()).to.be.properAddress;
+        });
 
-    it("should deploy the contract", async function () {
-        const { tresorBoostCore } = await loadFixture(deployTresorBoostCoreFixture);
-        expect(await tresorBoostCore.getAddress()).to.be.properAddress;
-    });
+        it("should have working Uniswap imports", async function () {
+            const { uniswapRouter, uniswapFactory, EURe, USDT } = await loadFixture(deployTresorBoostCoreFixture);
 
-    it("should have working Uniswap imports", async function () {
-        const { uniswapRouter, uniswapFactory, EURe, USDT } = await loadFixture(deployTresorBoostCoreFixture);
+            // Vérifier que le Router est bien attaché
+            expect(await uniswapRouter.getAddress()).to.be.properAddress;
 
-        // Vérifier que le Router est bien attaché
-        expect(await uniswapRouter.getAddress()).to.be.properAddress;
+            // Vérifier que le Factory est bien attaché
+            expect(await uniswapFactory.getAddress()).to.be.properAddress
 
-        // Vérifier que le Factory est bien attaché
-        expect(await uniswapFactory.getAddress()).to.be.properAddress
+            // Vérifier que le Router peut appeler une fonction simple
+            const factoryAddress = await uniswapRouter.factory();
+            expect(factoryAddress).to.equal(await uniswapFactory.getAddress());
 
-        // Vérifier que le Router peut appeler une fonction simple
-        const factoryAddress = await uniswapRouter.factory();
-        expect(factoryAddress).to.equal(await uniswapFactory.getAddress());
+            // Vérifier que les tokens sont bien attachés
+            expect(await EURe.getAddress()).to.be.properAddress;
+            expect(await USDT.getAddress()).to.be.properAddress;
+        });
 
-        // Vérifier que les tokens sont bien attachés
-        expect(await EURe.getAddress()).to.be.properAddress;
-        expect(await USDT.getAddress()).to.be.properAddress;
-    });
+        it("should add liquidity to EURe/USDT pool", async function () {
+            const { uniswapFactory, uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
 
-    it("should add liquidity to EURe/USDT pool", async function () {
-        const { uniswapFactory, uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
+            // Montants pour l'ajout de liquidité (en wei)
+            const amountEURe = ethers.parseEther("100000000"); // 100M EURe
+            const amountUSDT = ethers.parseEther("100000000"); // 100M USDT
 
-        // Montants pour l'ajout de liquidité (en wei)
-        const amountEURe = ethers.parseEther("1000"); // 1000 EURe
-        const amountUSDT = ethers.parseEther("1000"); // 1000 USDT
+            // Approuver le Router pour dépenser les tokens
+            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
+            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
 
-        // Approuver le Router pour dépenser les tokens
-        await EURe.approve(uniswapRouter.getAddress(), amountEURe);
-        await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
+            // Ajouter la liquidité
+            const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+            const tx = await uniswapRouter.addLiquidity(
+                EURe.getAddress(),
+                USDT.getAddress(),
+                amountEURe,
+                amountUSDT,
+                0, // amountEUReMin
+                0, // amountUSDTMin
+                owner.address,
+                deadline
+            );
 
-        // Ajouter la liquidité
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
-        const tx = await uniswapRouter.addLiquidity(
-            EURe.getAddress(),
-            USDT.getAddress(),
-            amountEURe,
-            amountUSDT,
-            0, // amountEUReMin
-            0, // amountUSDTMin
-            owner.address,
-            deadline
-        );
+            // Vérifier que la transaction a réussi
+            await expect(tx.wait()).to.not.be.reverted;
 
-        // Vérifier que la transaction a réussi
-        await expect(tx.wait()).to.not.be.reverted;
+            // Vérifier que la paire existe
+            const pairAddress = await uniswapFactory.getPair(EURe.getAddress(), USDT.getAddress());
+            expect(amountEURe).to.equal(await EURe.balanceOf(pairAddress));
+            expect(amountUSDT).to.equal(await USDT.balanceOf(pairAddress));
+            expect(pairAddress).to.not.equal(ethers.ZeroAddress);
+        });
 
-        // Vérifier que la paire existe
-        const pairAddress = await uniswapFactory.getPair(EURe.getAddress(), USDT.getAddress());
-        expect(amountEURe).to.equal(await EURe.balanceOf(pairAddress));
-        expect(amountUSDT).to.equal(await USDT.balanceOf(pairAddress));
-        expect(pairAddress).to.not.equal(ethers.ZeroAddress);
-    });
+        it("should swap EURe for USDT", async function () {
+            const { uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
 
-    it("should swap EURe for USDT", async function () {
-        const { uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
+            // D'abord, ajouter de la liquidité
+            const liquidityEURe = ethers.parseEther("100000000"); // 1000 EURe
+            const liquidityUSDT = ethers.parseEther("100000000"); // 1000 USDT
 
-        // D'abord, ajouter de la liquidité
-        const liquidityEURe = ethers.parseEther("1000"); // 1000 EURe
-        const liquidityUSDT = ethers.parseEther("1000"); // 1000 USDT
+            await EURe.approve(uniswapRouter.getAddress(), liquidityEURe);
+            await USDT.approve(uniswapRouter.getAddress(), liquidityUSDT);
 
-        await EURe.approve(uniswapRouter.getAddress(), liquidityEURe);
-        await USDT.approve(uniswapRouter.getAddress(), liquidityUSDT);
+            const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+            await uniswapRouter.addLiquidity(
+                EURe.getAddress(),
+                USDT.getAddress(),
+                liquidityEURe,
+                liquidityUSDT,
+                0,
+                0,
+                owner.address,
+                deadline
+            );
 
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
-        await uniswapRouter.addLiquidity(
-            EURe.getAddress(),
-            USDT.getAddress(),
-            liquidityEURe,
-            liquidityUSDT,
-            0,
-            0,
-            owner.address,
-            deadline
-        );
+            // Maintenant, faire le swap
+            const amountIn = ethers.parseEther("100"); // 100 EURe
 
-        // Maintenant, faire le swap
-        const amountIn = ethers.parseEther("100"); // 100 EURe
+            // Approuver le Router pour dépenser EURe
+            await EURe.approve(uniswapRouter.getAddress(), amountIn);
 
-        // Approuver le Router pour dépenser EURe
-        await EURe.approve(uniswapRouter.getAddress(), amountIn);
+            // Préparer le chemin du swap
+            const path = [EURe.getAddress(), USDT.getAddress()];
 
-        // Préparer le chemin du swap
-        const path = [EURe.getAddress(), USDT.getAddress()];
+            // Obtenir le montant minimum de sortie
+            const amounts = await uniswapRouter.getAmountsOut(amountIn, path);
+            const amountOutMin = amounts[1] * BigInt(95) / BigInt(100); // 95% du montant attendu
 
-        // Obtenir le montant minimum de sortie
-        const amounts = await uniswapRouter.getAmountsOut(amountIn, path);
-        const amountOutMin = amounts[1] * BigInt(95) / BigInt(100); // 95% du montant attendu
+            // Effectuer le swap
+            const tx = await uniswapRouter.swapExactTokensForTokens(
+                amountIn,
+                amountOutMin,
+                path,
+                owner.address,
+                deadline
+            );
 
-        // Effectuer le swap
-        const tx = await uniswapRouter.swapExactTokensForTokens(
-            amountIn,
-            amountOutMin,
-            path,
-            owner.address,
-            deadline
-        );
+            // Vérifier que la transaction a réussi
+            await expect(tx.wait()).to.not.be.reverted;
 
-        // Vérifier que la transaction a réussi
-        await expect(tx.wait()).to.not.be.reverted;
-
-        // Vérifier que le solde USDT a augmenté
-        const balanceAfter = await USDT.balanceOf(owner.address);
-        expect(balanceAfter).to.be.gt(0);
+            // Vérifier que le solde USDT a augmenté
+            const balanceAfter = await USDT.balanceOf(owner.address);
+            expect(balanceAfter).to.be.gt(0);
+        });
     });
 
     describe("Deposit", function () {
@@ -225,30 +224,19 @@ describe("TresorBoostCore", function () {
             USDT = fixture.USDT;
             uniswapRouter = fixture.uniswapRouter;
 
-            await EURe.approve(uniswapRouter.getAddress(), ethers.parseEther("1000"));
-            await USDT.approve(uniswapRouter.getAddress(), ethers.parseEther("1000"));
+            const amountEURe = ethers.parseEther("100000000");
+            const amountUSDT = ethers.parseEther("100000000");
+            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
+            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
             await uniswapRouter.addLiquidity(
                 EURe.getAddress(),
                 USDT.getAddress(),
-                ethers.parseEther("1000"),
-                ethers.parseEther("1000"),
+                amountEURe,
+                amountUSDT,
                 0,
                 0,
                 owner.address,
                 Math.floor(Date.now() / 1000) + 60 * 20
-            );
-
-            await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
-            await farmManager.addFarm(
-                true,
-                1000,
-                2,
-                await vault.getAddress(),
-                USDT.getAddress(),
-                constants.ZERO_ADDRESS,
-                "deposit(uint256,address)",
-                "withdraw(uint256,address)",
-                constants.HashZero
             );
         });
 
@@ -272,6 +260,9 @@ describe("TresorBoostCore", function () {
                 amount
             );
             const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
+            console.log("-------------------------------------------")
+            console.log("depositInfoAfter.amount", depositInfoAfter.amount)
+            console.log("-------------------------------------------")
             expect(depositInfoAfter.amount).to.equal(amount);
         });
         it("Should update sender rewards infos", async function () {
@@ -354,7 +345,7 @@ describe("TresorBoostCore", function () {
             try {
                 await tresorBoostCore.connect(account2).depositTo(
                     await vault.getAddress(),
-                    ethers.parseEther("1000") // Utiliser parseEther au lieu d'un nombre brut
+                    ethers.parseEther("1000")
                 );
             } catch (error) {
                 expect(error.message).to.include("InsufficientBalance");
@@ -398,20 +389,23 @@ describe("TresorBoostCore", function () {
             USDT = fixture.USDT;
             uniswapRouter = fixture.uniswapRouter;
 
-            await EURe.approve(uniswapRouter.getAddress(), ethers.parseEther("1000"));
-            await USDT.approve(uniswapRouter.getAddress(), ethers.parseEther("1000"));
+            const amountEURe = ethers.parseEther("100000000");
+            const amountUSDT = ethers.parseEther("100000000");
+            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
+            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
             await uniswapRouter.addLiquidity(
                 EURe.getAddress(),
                 USDT.getAddress(),
-                ethers.parseEther("1000"),
-                ethers.parseEther("1000"),
+                amountEURe,
+                amountUSDT,
                 0,
                 0,
                 owner.address,
                 Math.floor(Date.now() / 1000) + 60 * 20
             );
 
-            await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+            const eureAmount = ethers.parseEther("1000");
+            await EURe.connect(owner).approve(tresorBoostCore.getAddress(), eureAmount);
             await farmManager.addFarm(
                 true,
                 1000,
@@ -421,14 +415,15 @@ describe("TresorBoostCore", function () {
                 constants.ZERO_ADDRESS,
                 "deposit(uint256,address)",
                 "withdraw(uint256,address)",
-                constants.HashZero
+                "0x00000000",
+                false
             );
 
             await tresorBoostCore.connect(owner).depositTo(
                 await vault.getAddress(),
-                ethers.parseEther("1000")  // 1000 USDT
+                ethers.parseEther("1000")
             );
-            
+
             await USDT.mint(vault.getAddress(), ethers.parseEther("100000"));
 
             // Attendre 1 an pour générer des récompenses
@@ -437,12 +432,16 @@ describe("TresorBoostCore", function () {
 
             // Vérifier le solde dans le Vault avant le retrait
             const vaultBalance = await vault.balances(owner.address);
-            console.log("Solde dans le Vault avant retrait:", ethers.formatEther(vaultBalance));
-            
+            console.log("Solde utilisateur dans le Vault avant retrait:", ethers.formatEther(vaultBalance));
+
+            // Vérifier le solde dans le Vault avant le retrait
+            const usdtVaultBalance = await USDT.balanceOf(vault.getAddress());
+            console.log("Solde dans le Vault avant retrait:", ethers.formatEther(usdtVaultBalance));
+
             // Vérifier les récompenses calculées
             const rewards = await vault.getRewards(owner.address);
             console.log("Récompenses calculées:", ethers.formatEther(rewards));
-            
+
             // Vérifier le montant à retirer
             const withdrawAmount = ethers.parseEther("100");
             console.log("Montant à retirer:", ethers.formatEther(withdrawAmount));
@@ -453,7 +452,7 @@ describe("TresorBoostCore", function () {
         });
         it("Should revert if user hasn't deposited funds", async function () {
             try {
-                await tresorBoostCore.connect(owner).withdrawFrom(await vault.getAddress(), ethers.parseEther("2000"));
+                await tresorBoostCore.connect(owner).withdrawFrom(await vault.getAddress(), ethers.parseEther("3000"));
             } catch (error) {
                 expect(error.message).to.include("InsufficientDepositedFunds");
             }

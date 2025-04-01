@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "hardhat/console.sol";
 
 contract Vault {
     IERC20 public immutable token;
@@ -21,33 +22,35 @@ contract Vault {
 
     function deposit(uint256 amount, address user) external {
         require(amount > 0, "Amount must be greater than 0");
-        
         require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
+        _updateRewards(user);
         balances[user] += amount;
         lastUpdateTime[user] = block.timestamp;
 
         emit Deposited(user, amount);
     }
 
-    function withdraw(uint256 amount, address user) external {
+    function withdraw(uint256 amount, address user) external returns (uint256) {
         require(amount > 0, "Amount must be greater than 0");
         require(balances[user] >= amount, "Insufficient balance");
 
-        uint256 rewards = _distributeRewards(user);
+        uint256 rewards = _updateRewards(user);
         uint256 totalAmount = amount + rewards;
-        balances[user] -= totalAmount;
+        balances[user] -= amount;
+        cumulatedRewards[user] -= rewards;
         lastUpdateTime[user] = block.timestamp;
 
         require(token.transfer(msg.sender, totalAmount), "Transfer failed");
 
         emit Withdrawn(user, totalAmount);
+        return totalAmount;
     }
 
-    function _distributeRewards(address user) internal returns (uint256) {
+    function _updateRewards(address user) internal returns (uint256) {
         uint256 rewards = _calculateRewards(user);
         if (rewards > 0) {
-            balances[user] += rewards;
+            cumulatedRewards[user] += rewards;
             lastUpdateTime[user] = block.timestamp;
         }
         return rewards;
@@ -59,9 +62,7 @@ contract Vault {
         }
 
         uint256 timeElapsed = block.timestamp - lastUpdateTime[user];
-        uint256 rewards = (balances[user] * APR * timeElapsed) /
-            (365 days * 10000);
-
+        uint256 rewards = (balances[user] * APR * timeElapsed) / (365 days * 10000);
         return rewards;
     }
 

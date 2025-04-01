@@ -58,7 +58,7 @@ contract TresorBoostCore is Ownable {
 
         // Calculer le montant minimum de sortie (avec 5% de slippage)
         uint256[] memory amounts = router.getAmountsOut(_amount, path);
-        uint256 amountOutMin = (amounts[1] * 95) / 100;
+        uint256 amountOutMin = (amounts[1] * 98) / 100;
 
         // Effectuer le swap
         uint256[] memory swapResult = router.swapExactTokensForTokens(
@@ -90,21 +90,21 @@ contract TresorBoostCore is Ownable {
         require(depositInfo.amount >= _amount, InsufficientDepositedFunds(_amount, depositInfo.amount));
         // Dued amount to return to user
         uint256 totalDuedAmount = _amount + depositInfo.rewardAmount;
-
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromContract);
         
         // Withdraw from farm
         bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount, msg.sender);
-        (bool withdrawResult, ) = _fromContract.call(withdrawData);
+        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawData);
         require(withdrawResult, "Withdraw failed");
+        uint256 withdrawnAmount = abi.decode(returnedData, (uint256));
 
         //Gather tokens withdrawed + claimed tokens if a claim function is implemented
         //Otherwise, it will add withdrawAmount + 0
-        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo, _amount, totalDuedAmount);
-        uint256 fees = _manageFees(_amount, claimedAmount, totalDuedAmount);
+        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo, withdrawnAmount, totalDuedAmount);
+        uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
 
         // Swap des tokens reçus en EURe
-        require(IERC20(farmInfo.depositToken).approve(address(router), _amount + claimedAmount), "Approve failed");
+        require(IERC20(farmInfo.depositToken).approve(address(router), withdrawnAmount + claimedAmount), "Approve failed");
 
         // Préparer le chemin du swap inverse
         address[] memory path = new address[](2);
@@ -112,12 +112,12 @@ contract TresorBoostCore is Ownable {
         path[1] = eureToken;
 
         // Calculate minimum output amount (with 2% slippage)
-        uint256[] memory amounts = router.getAmountsOut(_amount + claimedAmount, path);
+        uint256[] memory amounts = router.getAmountsOut(withdrawnAmount + claimedAmount - fees, path);
         uint256 amountOutMin = (amounts[1] * 98) / 100;
 
         // Perform the swap
         uint256[] memory swapResult = router.swapExactTokensForTokens(
-            _amount + claimedAmount,
+            withdrawnAmount + claimedAmount - fees,
             amountOutMin,
             path,
             address(this),
@@ -139,7 +139,7 @@ contract TresorBoostCore is Ownable {
 
 
     function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo, uint256 withdrawAmount, uint256 totalDuedAmount) private returns (uint256) {
-        if(farmInfo.claimSelector != 0x00000000) {
+        if(farmInfo.hasClaimSelector) {
             bytes memory claimData = abi.encodeWithSelector(farmInfo.claimSelector);
             (bool claimResult, bytes memory returnedClaimData) = _fromContract.call(claimData);
             require(claimResult, "Claim failed");
@@ -153,13 +153,19 @@ contract TresorBoostCore is Ownable {
         DepositInfo memory depositInfo = deposits[user][pool];
         deposits[user][pool] = DepositInfo({
             pool: pool,
-            amount: depositInfo.amount + depositAmount - withdrawAmount,
+            amount: depositInfo.amount - withdrawAmount + depositAmount,  // Convertir en EURe avant le calcul
             rewardAmount: depositInfo.rewardAmount,
             lastTimeRewardCalculated: block.timestamp
         });
     }
 
     function _manageFees(uint256 withdrawAmount, uint256 claimedAmount, uint256 totalDuedAmount) pure private returns (uint256) {
+        console.log("--------------------------------");
+        console.log("withdrawAmount", withdrawAmount);
+        console.log("claimedAmount", claimedAmount);
+        console.log("totalDuedAmount", totalDuedAmount);
+        console.log("Calculated fees", withdrawAmount + claimedAmount - totalDuedAmount);
+        console.log("--------------------------------");
         return withdrawAmount + claimedAmount - totalDuedAmount;
     }
 

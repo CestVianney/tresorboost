@@ -22,6 +22,7 @@ contract FarmManager is Ownable {
         uint8 farmType;
         uint16 rewardRate;
         bool isActive;
+        bool hasClaimSelector;
     }
 
     mapping(address => FarmInfo) internal farms;
@@ -37,7 +38,8 @@ contract FarmManager is Ownable {
         address _rewardToken,
         string memory _depositFunction,
         string memory _withdrawFunction,
-        string memory _claimFunction
+        string memory _claimFunction,
+        bool _hasClaimSelector
     ) public onlyOwner {
         farms[_farmAddress] = FarmInfo({
             isActive: _isActive,
@@ -48,7 +50,8 @@ contract FarmManager is Ownable {
             rewardToken: _rewardToken,
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
-            claimSelector: bytes4(keccak256(bytes(_claimFunction)))
+            claimSelector: bytes4(keccak256(bytes(_claimFunction))),
+            hasClaimSelector: _hasClaimSelector
         });
 
         emit FarmAdded(_farmAddress);

@@ -1,4 +1,4 @@
-export const TBC_ABI =  [
+export const TBC_ABI =   [
   {
     "inputs": [
       {
@@ -26,13 +26,41 @@ export const TBC_ABI =  [
     "type": "constructor"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "inactiveFarm",
+        "type": "address"
+      }
+    ],
     "name": "InactiveFarm",
     "type": "error"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
     "name": "InsufficientBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deposited",
+        "type": "uint256"
+      }
+    ],
+    "name": "InsufficientDepositedFunds",
     "type": "error"
   },
   {
@@ -274,4 +302,4 @@ export const TBC_ABI =  [
     "type": "function"
   }
 ]
-export const TBC_ADDRESS = "0x7dd5e200bb76acc0A0f7bf077bF7808b3c6A5999"
+export const TBC_ADDRESS = "0xCdA381d15F36D82cA56dAb6A35880D3361D3a12F"
