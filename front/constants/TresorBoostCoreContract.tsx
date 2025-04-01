@@ -1,4 +1,4 @@
-export const TBC_ABI =   [
+export const TBC_ABI = [
   {
     "inputs": [
       {
@@ -116,6 +116,31 @@ export const TBC_ABI =   [
       {
         "indexed": true,
         "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "FeesClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "previousOwner",
         "type": "address"
       },
@@ -127,6 +152,31 @@ export const TBC_ABI =   [
       }
     ],
     "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "RewardsClaimed",
     "type": "event"
   },
   {
@@ -302,4 +352,4 @@ export const TBC_ABI =   [
     "type": "function"
   }
 ]
-export const TBC_ADDRESS = "0xCdA381d15F36D82cA56dAb6A35880D3361D3a12F"
+export const TBC_ADDRESS = "0x07dfd40280EC4C35d31937D077C7365a4058dFf6"

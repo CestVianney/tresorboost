@@ -21,8 +21,10 @@ contract TresorBoostCore is Ownable {
     
     event Deposit(address indexed user, address indexed pool, uint256 amount);
     event Withdraw(address indexed user, address indexed pool, uint256 amount);
+    event RewardsClaimed(address indexed user, address indexed pool, uint256 amount);
+    event FeesClaimed(address indexed user, address indexed pool, uint256 amount);
+    event CoveredSlippage(address indexed user, address indexed pool, uint256 slippage);
 
-    
     mapping(address => mapping(address => DepositInfo)) public deposits;
 
     FarmManager private farmManager; 
@@ -74,7 +76,7 @@ contract TresorBoostCore is Ownable {
         require(IERC20(farmInfo.depositToken).approve(_toContract, receivedAmount), "Approve failed");
 
         // Faire le dépôt dans le farm
-        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, receivedAmount, msg.sender);
+        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, _amount, msg.sender);
         (bool depositResult,) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
 
@@ -100,7 +102,7 @@ contract TresorBoostCore is Ownable {
 
         //Gather tokens withdrawed + claimed tokens if a claim function is implemented
         //Otherwise, it will add withdrawAmount + 0
-        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo, withdrawnAmount, totalDuedAmount);
+        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo);
         uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
 
         // Swap des tokens reçus en EURe
@@ -129,16 +131,18 @@ contract TresorBoostCore is Ownable {
 
         _updateDepositInfo(msg.sender, _fromContract, 0, _amount);
 
-        // Transfer EURe to user and fees to bank account
-        require(IERC20(eureToken).transfer(msg.sender, receivedEure), "Transfer failed");
+        require(IERC20(eureToken).transfer(msg.sender, totalDuedAmount), "Transfer failed");
         require(IERC20(farmInfo.depositToken).transfer(bankAccount, fees), "Transfer failed");
 
         emit Withdraw(msg.sender, _fromContract, _amount);
+        emit RewardsClaimed(msg.sender, _fromContract, depositInfo.rewardAmount);
+        emit FeesClaimed(bankAccount, _fromContract, fees);
+        emit CoveredSlippage(msg.sender, _fromContract, totalDuedAmount - receivedEure );
     }
 
 
 
-    function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo, uint256 withdrawAmount, uint256 totalDuedAmount) private returns (uint256) {
+    function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo) private returns (uint256) {
         if(farmInfo.hasClaimSelector) {
             bytes memory claimData = abi.encodeWithSelector(farmInfo.claimSelector);
             (bool claimResult, bytes memory returnedClaimData) = _fromContract.call(claimData);

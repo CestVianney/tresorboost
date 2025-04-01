@@ -14,6 +14,7 @@ import { UserActivityData } from '@/constants/UserActivityData'
 import { DepositData } from '@/constants/DepositData'
 import { Abi, formatEther } from 'viem'
 import { formatNumberFromNumber } from '@/utils/utils'
+import { EventTypesEnum } from '@/enums/EventTypesEnum'
 
 export default function Dashboard() {
 
@@ -21,7 +22,7 @@ export default function Dashboard() {
     const { address, isConnected } = useAccount()
     const { userActivity } = useEventData()
 
-    const [balance, setBalance] = useState<BigInt>(BigInt(0))
+    const [userEuroBalance, setUserEuroBalance] = useState<BigInt>(BigInt(0))
     const { data: balanceData } = useReadContract({
         address: EURE_ADDRESS, 
         abi: EURE_ABI,
@@ -54,12 +55,12 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!isConnected || !address) {
-            setBalance(BigInt(0));
+            setUserEuroBalance(BigInt(0));
             setUserData([]);
             return;
         }
         
-        setBalance(balanceData ? balanceData as BigInt : BigInt(0));
+        setUserEuroBalance(balanceData ? balanceData as BigInt : BigInt(0));
         
         if (data) {
             const validData: DepositData[] = data
@@ -89,6 +90,7 @@ export default function Dashboard() {
         }, {} as Record<string, UserActivityData[]>);
 
         let totalRewards = 0;
+        let claimedRewards = 0;
         let lastMinuteRewards = 0;
         let lastFiveMinutesRewards = 0;
         let lastHourRewards = 0;
@@ -108,7 +110,7 @@ export default function Dashboard() {
             const lastEventTimestamp = Math.floor(Date.now() / 1000);
             for (const event of pools[pool]) {
                 const adjustedTimestamp = event.timestamp + (27 * 60); // Ajouter 27 minutes
-                if (event.type === 'deposit') {
+                if (event.type === EventTypesEnum.Deposit) {
                     const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                     totalRewards += event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMinuteRewards += timeElapsed > 60 ? event.amount * rewardRate * 60 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
@@ -118,7 +120,7 @@ export default function Dashboard() {
                     lastWeekRewards += timeElapsed > 604800 ? event.amount * rewardRate * 604800 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMonthRewards += timeElapsed > 2629746 ? event.amount * rewardRate * 2629746 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastYearRewards += timeElapsed > 31536000 ? event.amount * rewardRate * 31536000 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
-                } else if (event.type === 'withdrawal') {
+                } else if (event.type === EventTypesEnum.Withdraw) {
                     const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                     totalRewards -= event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMinuteRewards -= timeElapsed > 60 ? event.amount * rewardRate * 60 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
@@ -128,12 +130,15 @@ export default function Dashboard() {
                     lastWeekRewards -= timeElapsed > 604800 ? event.amount * rewardRate * 604800 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMonthRewards -= timeElapsed > 2629746 ? event.amount * rewardRate * 2629746 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastYearRewards -= timeElapsed > 31536000 ? event.amount * rewardRate * 31536000 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
+                } else if (event.type === EventTypesEnum.RewardsClaimed) {
+                    claimedRewards += event.amount;
                 }
             }
         }
         
         return {
             totalRewards: Number(formatNumberFromNumber(totalRewards)),
+            claimedRewards: Number(formatNumberFromNumber(claimedRewards)),
             lastMinuteRewards: Number(formatNumberFromNumber(lastMinuteRewards)),
             lastFiveMinutesRewards: Number(formatNumberFromNumber(lastFiveMinutesRewards)),
             lastHourRewards: Number(formatNumberFromNumber(lastHourRewards)),
@@ -147,7 +152,7 @@ export default function Dashboard() {
     return (
         <div className="flex flex-col items-center h-screen">
             <div className="w-full h-[4vh]">
-                <Welcome username={address} balance={balance} />
+                <Welcome username={address} userEuroBalance={userEuroBalance} />
             </div>
             <Separator />
 
@@ -159,7 +164,7 @@ export default function Dashboard() {
                 <div className="flex-[2_1_35%] mt-5">
                     <ProfileDetails 
                     farms={farms} 
-                    balance={balance}  
+                    userEuroBalance={userEuroBalance}  
                     userActivity={userActivity} />
                 </div>
                 <Separator />

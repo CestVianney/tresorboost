@@ -1,10 +1,10 @@
 import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/FarmManagerContract";
-import { TBC_ADDRESS } from "@/constants/TresorBoostCoreContract";
+import { TBC_ABI, TBC_ADDRESS } from "@/constants/TresorBoostCoreContract";
 import { publicClient } from "@/utils/publicClient";
 import { useEffect, useState } from "react";
 import { parseAbiItem } from "viem";
 import { useWatchContractEvent, useAccount } from "wagmi";
-import { formatEther, parseEther } from "viem";
+import { formatEther } from "viem";
 import { UserActivityData } from "@/constants/UserActivityData";
 
 export const useEventData = () => {
@@ -48,9 +48,7 @@ export const useEventData = () => {
 
     const handleUserActivity = async () => {
         if (!isConnected || !address) return;
-        
-        console.log("address", address);
-        const deposits = await publicClient.getLogs({
+            const deposits = await publicClient.getLogs({
             address: TBC_ADDRESS,
             event: parseAbiItem("event Deposit(address indexed user, address indexed pool, uint256 amount)"),
             args: {
@@ -71,20 +69,38 @@ export const useEventData = () => {
             toBlock: 'latest'
         });
 
+        const rewardsClaimed = await publicClient.getLogs({
+            address: TBC_ADDRESS,
+            event: parseAbiItem("event RewardsClaimed(address indexed user, address indexed pool, uint256 amount)"),
+            args: {
+                user: address
+            },
+            fromBlock: BigInt(`${process.env.NEXT_PUBLIC_BLOCK_NUMBER}`),
+            toBlock: 'latest'
+        });
+
+        const feesClaimed = await publicClient.getLogs({
+            address: TBC_ADDRESS,
+            event: parseAbiItem("event FeesClaimed(address indexed user, address indexed pool, uint256 amount)"),
+            args: {
+                user: address
+            },
+            fromBlock: BigInt(`${process.env.NEXT_PUBLIC_BLOCK_NUMBER}`),
+            toBlock: 'latest'
+        });
         // Combiner et trier les événements par date
-        const allEvents = [...deposits, ...withdrawals].sort((a, b) => {
+        const allEvents = [...deposits, ...withdrawals, ...rewardsClaimed, ...feesClaimed].sort((a, b) => {
             return Number((b.blockNumber ?? BigInt(0)) - (a.blockNumber ?? BigInt(0)));
         });
 
         // Formater les événements
         const formattedEvents = await Promise.all(allEvents.map(async (event): Promise<UserActivityData> => {
-            const isDeposit = event.eventName === 'Deposit';
             const block = await publicClient.getBlock({ blockNumber: event.blockNumber ?? BigInt(0) });
             return {
-                type: isDeposit ? 'deposit' : 'withdraw',
+                type: event.eventName,
                 user: event.args.user ?? '0x0',
                 pool: event.args.pool ?? '0x0',
-                amount: Number(formatEther(event.args.amount ?? BigInt(0))),
+                amount: Number(formatEther(event.args.amount ?? BigInt(0))) ?? BigInt(0),
                 blockNumber: event.blockNumber ?? BigInt(0),
                 timestamp: Number(block.timestamp)
             };
@@ -110,7 +126,49 @@ export const useEventData = () => {
                 })
             })
         }
-    })
+    });
+
+    useWatchContractEvent({
+        address: TBC_ADDRESS,
+        abi: TBC_ABI,
+        eventName: "Deposit",
+        args: {
+            user: address
+        },
+        onLogs: async (logs: any[]) => {
+            const formattedLogs = logs.map((log) => {
+                return {
+                    type: "Deposit",
+                    user: log.args.user ?? '0x0',
+                    pool: log.args.pool ?? '0x0',
+                    amount: Number(formatEther(log.args.amount ?? BigInt(0))),
+                    timestamp: Math.floor(Date.now() / 1000)
+                }
+            });
+            handleUserActivity();
+        }
+    });
+
+    useWatchContractEvent({
+        address: TBC_ADDRESS,
+        abi: TBC_ABI,
+        eventName: "Withdraw",
+        args: {
+            user: address
+        },
+        onLogs: async (logs: any[]) => {
+            const formattedLogs = logs.map((log) => {
+                return {
+                    type: "Withdraw",
+                    user: log.args.user ?? '0x0',
+                    pool: log.args.pool ?? '0x0',
+                    amount: Number(formatEther(log.args.amount ?? BigInt(0))),
+                    timestamp: Math.floor(Date.now() / 1000)
+                }
+            });
+            handleUserActivity();
+        }
+    });
 
     return {
         existingFarms,

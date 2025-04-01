@@ -9,7 +9,6 @@ import { RewardsData } from '@/constants/RewardsData'
 const GlobalIndicators = ({ userData, rewardsData }: { userData: DepositData[], rewardsData: RewardsData }) => {
     const [showShortPeriods, setShowShortPeriods] = useState(false);
     const totalDeposits = userData?.reduce((acc, curr) => acc + curr.amount, 0) ?? 0;
-    const totalRewards = rewardsData.totalRewards;
 
     return (
         <div>
@@ -21,9 +20,19 @@ const GlobalIndicators = ({ userData, rewardsData }: { userData: DepositData[], 
                     </Card>
                 </div>
                 <div className="w-[50%] flex flex-col items-center">
-                    <Card className="p-4 flex flex-row items-center w-[90%] bg-gradient-to-r from-white to-gray-600">
-                        <h2 className="text-xl flex-shrink-0">Intérêts (total)</h2>
-                        <p className="text-2xl font-bold flex-grow text-center">{formatNumberFromNumber(totalRewards)} €</p>
+                    <Card className="p-4 flex flex-col items-center w-[90%] bg-gradient-to-r from-white to-gray-600">
+                        <h2 className="text-xl mb-4">Intérêts</h2>
+                        <div className="flex w-full justify-between items-center">
+                            <div className="flex flex-col items-center w-1/2">
+                                <p className="text-sm text-gray-600">Récupérés</p>
+                                <p className="text-xl font-bold text-green-500">{formatNumberFromNumber(rewardsData.claimedRewards)} €</p>
+                            </div>
+                            <div className="h-12 w-px bg-gray-400"></div>
+                            <div className="flex flex-col items-center w-1/2">
+                                <p className="text-sm text-gray-600">En attente</p>
+                                <p className="text-xl font-bold text-yellow-500">{formatNumberFromNumber(rewardsData.totalRewards - rewardsData.claimedRewards)} €</p>
+                            </div>
+                        </div>
                     </Card>
                     <Card 
                         className="flex flex-row items-center w-[90%] justify-evenly px-4 mt-4 cursor-pointer hover:bg-gray-100 transition-colors duration-200 relative group"

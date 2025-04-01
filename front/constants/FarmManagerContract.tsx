@@ -322,4 +322,4 @@ export const FARM_MANAGER_ABI = [
     "type": "function"
   }
 ]
-export const FARM_MANAGER_ADDRESS = "0x523be5a223Aec56bC54D6C861F1E1ef71d39cDF4"
+export const FARM_MANAGER_ADDRESS = "0xCdA381d15F36D82cA56dAb6A35880D3361D3a12F"

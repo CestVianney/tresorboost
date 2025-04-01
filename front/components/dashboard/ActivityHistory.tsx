@@ -4,6 +4,8 @@ import { UserActivityData } from '../../constants/UserActivityData'
 import { formatNumberFromNumber, formatDateFromTimestamp } from '../../utils/utils'
 import { FarmData } from '../../constants/FarmData'
 import { FarmTypeEnum } from '@/enums/FarmTypeEnum'
+import { EventTypesEnum } from '@/enums/EventTypesEnum'
+
 const ActivityHistory = ({ userActivity, farms }: { userActivity: UserActivityData[], farms: FarmData[] }) => {
     const [activity, setActivity] = useState<UserActivityData[]>([])
     useEffect(() => {
@@ -12,10 +14,14 @@ const ActivityHistory = ({ userActivity, farms }: { userActivity: UserActivityDa
 
     const formatActivityType = (type: string, pool: string) => {
         switch (type) {
-            case 'deposit':
+            case 'Deposit':
                 return 'Dépot sur profil ' + formatFarmName(pool)
-            case 'withdraw':
-                return 'Retrait'
+            case 'Withdraw':
+                return 'Retrait de profil ' + formatFarmName(pool)
+            case 'RewardsClaimed':
+                return 'Récupération des récompenses de profil ' + formatFarmName(pool)
+            case 'FeesClaimed':
+                return 'Récupération des frais de profil ' + formatFarmName(pool)
         }
     }
 
@@ -33,24 +39,32 @@ const ActivityHistory = ({ userActivity, farms }: { userActivity: UserActivityDa
     return (
         <div>
             <div className='mt-2 text-2xl'>Historique des opérations</div>
-            <Table className='w-[60%] mx-auto'>
-                <TableRow>
-                    <TableHead className='w-[30%]'>Date</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead className='w-[20%]'>Amount</TableHead>
-                </TableRow>
-                <TableBody>
-                    {activity.map((activity: UserActivityData, index) => (
-                        <TableRow key={index}>
-                            <td className='text-xl'>{formatDateFromTimestamp(activity.timestamp)}</td>
-                            <td className='text-xl'>{formatActivityType(activity.type, activity.pool)}</td>
-                            <td className={`text-xl ${activity.amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                {activity.amount > 0 ? '+' + formatNumberFromNumber(activity.amount) + ' €' : formatNumberFromNumber(activity.amount) + ' €'}
-                            </td>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+            <div className='h-[300px] overflow-y-auto'>
+                <Table className='w-[60%] mx-auto'>
+                    <TableRow>
+                        <TableHead className='w-[30%]'>Date</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead className='w-[20%]'>Montant</TableHead>
+                    </TableRow>
+                    <TableBody>
+                        {activity.map((activity: UserActivityData, index) => (
+                            <TableRow key={index}>
+                                <td className='text-xl'>{formatDateFromTimestamp(activity.timestamp)}</td>
+                                <td className='text-xl'>{formatActivityType(activity.type, activity.pool)}</td>
+                                <td className={`text-xl md:text-right ${
+                                    activity.type === EventTypesEnum.Deposit ? 'text-green-500' :
+                                    activity.type === EventTypesEnum.Withdraw ? 'text-red-500' :
+                                    activity.type === EventTypesEnum.RewardsClaimed ? 'text-yellow-500' :
+                                    activity.type === EventTypesEnum.FeesClaimed ? 'text-purple-500' :
+                                    'text-gray-500'
+                                }`}>
+                                    {activity.type === EventTypesEnum.Deposit || activity.type === EventTypesEnum.FeesClaimed ? '+' + formatNumberFromNumber(activity.amount) + ' €' : '-' + formatNumberFromNumber(activity.amount) + ' €'}
+                                </td>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     )
 }

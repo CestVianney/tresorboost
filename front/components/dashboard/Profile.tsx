@@ -9,8 +9,9 @@ import { formatNumberFromNumber } from '@/utils/utils';
 
 interface ProfileProps {
     pool: string;
-    profileName: string;
-    value: number;
+    farmProfileName: string;
+    claimableRewards: number;
+    rewards: number;
     annualRate: string;
     monthlyGain: number;
     yearlyGain: number;
@@ -19,11 +20,29 @@ interface ProfileProps {
     balance: BigInt;
 }
 
-const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate, monthlyGain, yearlyGain, bgColor = "bg-gray-300", textColor = "text-black", balance }) => {
+const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, claimableRewards, rewards: depositInFarm, annualRate, monthlyGain, yearlyGain, bgColor = "bg-gray-300", textColor = "text-black", balance }) => {
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
     const [depositAmount, setDepositAmount] = useState('');
-    
+    const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+
     const { writeContract } = useWriteContract();
+
+    const handleWithdraw = async (_toPool: string, _amount: number) => {
+        try {
+            const amountInWei = parseEther(_amount.toString());
+            const withdrawTx = await writeContract({
+                address: TBC_ADDRESS,
+                abi: TBC_ABI,
+                functionName: 'withdrawFrom',
+                args: [_toPool, amountInWei],
+            });
+            setIsWithdrawModalOpen(false);
+            setWithdrawAmount('');
+        } catch (error: any) {
+            throw error;
+        }
+    }
 
     const handleDeposit = async (_toPool: string, _amount: number) => {
         try {
@@ -56,8 +75,12 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
         <>
             <div className={`w-64 p-6 rounded-xl shadow-lg ${bgColor} ${textColor} text-center`}>
                 <h2 className="font-bold text-lg">{`Profil ${profileName.toUpperCase()}`}</h2>
-                <p className="text-3xl font-bold my-2">{`${formatNumberFromNumber(value)} €`}</p>
+                <p className="text-3xl font-bold my-2">{`${formatNumberFromNumber(depositInFarm)} €`}</p>
                 <p className="text-md font-semibold">Taux annualisé : {annualRate}%</p>
+                <div className="bg-yellow-100 rounded-lg p-2 mt-2 mb-4">
+                    <p className="text-sm text-yellow-800 font-medium">Intérêts récupérables</p>
+                    <p className="text-lg text-yellow-600 font-bold">{`${formatNumberFromNumber(claimableRewards)} €`}</p>
+                </div>
 
                 <div className="flex justify-between mt-4 font-semibold">
                     <div className='shadow-lg p-2 rounded-lg'>
@@ -70,13 +93,18 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
                     </div>
                 </div>
                 <div className="flex justify-between mt-4 font-bold">
-                    <button 
+                    <button
                         onClick={() => setIsDepositModalOpen(true)}
                         className="hover:shadow-md hover:shadow-gray-500/50"
                     >
                         DÉPOSER
                     </button>
-                    <button className="hover:shadow-md hover:shadow-gray-500/50">RETIRER</button>
+                    <button
+                        onClick={() => setIsWithdrawModalOpen(true)}
+                        className="hover:shadow-md hover:shadow-gray-500/50"
+                    >
+                        RETIRER
+                    </button>
                 </div>
             </div>
 
@@ -86,9 +114,9 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
                         <h3 className="text-xl font-bold text-center mb-6">Déposer des EURe</h3>
                         <div className="relative">
                             <div className="absolute -top-4 right-2 bg-white px-4 py-1">
-                                <span className="text-sm text-gray-600">Solde disponible :</span>
+                                <span className="text-sm text-gray-600">Trésorerie engageable :</span>
                                 <span className="ml-2 font-semibold text-yellow-500">
-                                    {balance ? formatEther(balance as bigint) : '0'} EURe
+                                    {balance ? formatNumberFromNumber(Number(formatEther(balance as bigint))) : '0'} €
                                 </span>
                             </div>
                             <input
@@ -108,6 +136,42 @@ const Profile: React.FC<ProfileProps> = ({ pool, profileName, value, annualRate,
                             </button>
                             <button
                                 onClick={() => handleDeposit(pool, Number(depositAmount))}
+                                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+                            >
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isWithdrawModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+                        <h3 className="text-xl font-bold text-center mb-6">Retirer des EURe</h3>
+                        <div className="relative">
+                            <div className="absolute -top-4 right-2 bg-white px-4 py-1">
+                                <span className="text-sm text-gray-600">Trésorerie désengageable :</span>
+                                <span className="ml-2 font-semibold text-yellow-500">
+                                    {depositInFarm ? formatNumberFromNumber(depositInFarm) : '0'} €
+                                </span>
+                            </div>
+                            <input
+                                type="number"
+                                value={withdrawAmount}
+                                onChange={(e) => setWithdrawAmount(e.target.value)}
+                                placeholder="Montant en EURe"
+                                className="border p-3 rounded-lg mb-4 w-full focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setIsWithdrawModalOpen(false)}
+                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => handleWithdraw(pool, Number(withdrawAmount))}
                                 className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
                             >
                                 Confirmer
