@@ -135,6 +135,11 @@ export const FARM_MANAGER_ABI = [
         "internalType": "string",
         "name": "_claimFunction",
         "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "_hasClaimSelector",
+        "type": "bool"
       }
     ],
     "name": "addFarm",
@@ -197,6 +202,11 @@ export const FARM_MANAGER_ABI = [
           {
             "internalType": "bool",
             "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "hasClaimSelector",
             "type": "bool"
           }
         ],
@@ -281,6 +291,11 @@ export const FARM_MANAGER_ABI = [
             "internalType": "bool",
             "name": "isActive",
             "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "hasClaimSelector",
+            "type": "bool"
           }
         ],
         "internalType": "struct FarmManager.FarmInfo",
@@ -307,4 +322,4 @@ export const FARM_MANAGER_ABI = [
     "type": "function"
   }
 ]
-export const FARM_MANAGER_ADDRESS = "0xaB11663F402BCC47Ad4eFD7577a4bdDa54A53901"
+export const FARM_MANAGER_ADDRESS = "0x523be5a223Aec56bC54D6C861F1E1ef71d39cDF4"

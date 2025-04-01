@@ -1,6 +1,7 @@
 const { ethers } = require("hardhat");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 const IUniswapV2Factory = require("@uniswap/v2-core/build/IUniswapV2Factory.json");
+const { ZeroAddress } = require("ethers");
 
 const main = async () => {
     console.log("ABI Loaded: ", IUniswapV2Factory.abi ? "✅" : "❌");
@@ -19,12 +20,14 @@ const main = async () => {
     const aUSDT = await deployMintFakeUSDT(owner.address);
     console.log("------------------------------ADD LIQUIDITY EURe USDT------------------------------");
     await addLiquidityEUReUSDT(aEURe, aUSDT);
-    console.log("------------------------------DEPLOY VAULT 6%------------------------------");
-    const vaultUSDT75 = await deployVault(aUSDT, 600);
-    console.log("------------------------------DEPLOY VAULT 10%------------------------------");
-    const vaultUSDC10 = await deployVault(aUSDT, 1000);
+    console.log("------------------------------DEPLOY VAULT 9%------------------------------");
+    const vaultUSDT75 = await deployVault(aUSDT, 900);
+    console.log("------------------------------DEPLOY VAULT 12%------------------------------");
+    const vaultUSDC10 = await deployVault(aUSDT, 1200);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
     const vaultUSDT15 = await deployVault(aUSDT, 1500);
+    console.log("------------------------------CREATE FARMS------------------------------");
+    await createFarms(farmManager, await aUSDT.getAddress(), await vaultUSDT75.getAddress(), await vaultUSDC10.getAddress(), await vaultUSDT15.getAddress());
 }
 
 async function deployFarmManager() {
@@ -116,6 +119,29 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
     
     await tx.wait();
     console.log("Liquidité ajoutée avec succès");
+    }
+
+async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDC10, vaultUSDT15) {
+    const farms = [
+        { vault: vaultUSDT75, farmType: 0, rate: 400 },
+        { vault: vaultUSDC10, farmType: 1, rate: 600 },
+        { vault: vaultUSDT15, farmType: 2, rate: 800 },
+    ];
+
+    for (const farm of farms) {
+        await farmManager.addFarm(
+            true,
+            farm.rate,
+            farm.farmType,
+            farm.vault,
+            usdtAddress,
+            ZeroAddress,
+            "deposit(uint256,address)",
+            "withdraw(uint256,address)",
+            "getRewards(address)",
+            false
+        );
+    }
 }
 
 main().catch((e) => {

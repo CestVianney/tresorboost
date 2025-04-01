@@ -15,9 +15,10 @@ contract TresorBoostCore is Ownable {
         uint256 lastTimeRewardCalculated;
     }
 
-    error InsufficientBalance();
-    error InactiveFarm();
-
+    error InsufficientBalance(uint256 required);
+    error InactiveFarm(address inactiveFarm);
+    error InsufficientDepositedFunds(uint256 required, uint256 deposited);
+    
     event Deposit(address indexed user, address indexed pool, uint256 amount);
     event Withdraw(address indexed user, address indexed pool, uint256 amount);
 
@@ -42,10 +43,10 @@ contract TresorBoostCore is Ownable {
     }
 
     function depositTo(address _toContract, uint256 _amount) public {
-        require(IERC20(eureToken).balanceOf(msg.sender) >= _amount, InsufficientBalance());
+        require(IERC20(eureToken).balanceOf(msg.sender) >= _amount, InsufficientBalance(_amount));
         require(IERC20(eureToken).transferFrom(msg.sender, address(this), _amount));
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_toContract);
-        require(farmInfo.isActive, InactiveFarm());
+        require(farmInfo.isActive, InactiveFarm(_toContract));
 
         // Approuver le Router pour dépenser les EURe
         require(IERC20(eureToken).approve(address(router), _amount), "Approve failed");
@@ -57,23 +58,23 @@ contract TresorBoostCore is Ownable {
 
         // Calculer le montant minimum de sortie (avec 5% de slippage)
         uint256[] memory amounts = router.getAmountsOut(_amount, path);
-        uint256 amountOutMin = (amounts[1] * 95) / 100;
+        uint256 amountOutMin = (amounts[1] * 98) / 100;
 
         // Effectuer le swap
-        router.swapExactTokensForTokens(
+        uint256[] memory swapResult = router.swapExactTokensForTokens(
             _amount,
             amountOutMin,
             path,
             address(this),
-            block.timestamp + 300 // 5 minutes de deadline
+            block.timestamp + 300
         );
 
-        // Approuver le contrat de farm pour dépenser les tokens reçus
-        uint256 receivedAmount = IERC20(farmInfo.depositToken).balanceOf(address(this));
+        // Utiliser le montant retourné par le swap au lieu du solde total
+        uint256 receivedAmount = swapResult[1];  // Le montant de tokens reçus après le swap
         require(IERC20(farmInfo.depositToken).approve(_toContract, receivedAmount), "Approve failed");
 
         // Faire le dépôt dans le farm
-        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, receivedAmount);
+        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, receivedAmount, msg.sender);
         (bool depositResult,) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
 
@@ -86,49 +87,65 @@ contract TresorBoostCore is Ownable {
         updateRewards(_fromContract);
         DepositInfo memory depositInfo = deposits[msg.sender][_fromContract];
 
-        require(depositInfo.amount >= _amount, "Insufficient balance");
+        require(depositInfo.amount >= _amount, InsufficientDepositedFunds(_amount, depositInfo.amount));
+        // Dued amount to return to user
         uint256 totalDuedAmount = _amount + depositInfo.rewardAmount;
-
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromContract);
         
-        // Retirer du farm
-        bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount);
-        (bool withdrawResult, bytes memory returnedWithdrawData) = _fromContract.call(withdrawData);
+        // Withdraw from farm
+        bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount, msg.sender);
+        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawData);
         require(withdrawResult, "Withdraw failed");
-        uint256 withdrawAmount = abi.decode(returnedWithdrawData, (uint256));
+        uint256 withdrawnAmount = abi.decode(returnedData, (uint256));
 
-        // Claim des récompenses si nécessaire
-        uint256 fees = _handleRewards(_fromContract, farmInfo, withdrawAmount, totalDuedAmount);
+        //Gather tokens withdrawed + claimed tokens if a claim function is implemented
+        //Otherwise, it will add withdrawAmount + 0
+        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo, withdrawnAmount, totalDuedAmount);
+        uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
 
         // Swap des tokens reçus en EURe
-        uint256 receivedAmount = IERC20(farmInfo.depositToken).balanceOf(address(this));
-        require(IERC20(farmInfo.depositToken).approve(address(router), receivedAmount), "Approve failed");
+        require(IERC20(farmInfo.depositToken).approve(address(router), withdrawnAmount + claimedAmount), "Approve failed");
 
         // Préparer le chemin du swap inverse
         address[] memory path = new address[](2);
         path[0] = farmInfo.depositToken;
         path[1] = eureToken;
 
-        // Calculer le montant minimum de sortie (avec 5% de slippage)
-        uint256[] memory amounts = router.getAmountsOut(receivedAmount, path);
-        uint256 amountOutMin = (amounts[1] * 95) / 100;
+        // Calculate minimum output amount (with 2% slippage)
+        uint256[] memory amounts = router.getAmountsOut(withdrawnAmount + claimedAmount - fees, path);
+        uint256 amountOutMin = (amounts[1] * 98) / 100;
 
-        // Effectuer le swap
-        router.swapExactTokensForTokens(
-            receivedAmount,
+        // Perform the swap
+        uint256[] memory swapResult = router.swapExactTokensForTokens(
+            withdrawnAmount + claimedAmount - fees,
             amountOutMin,
             path,
             address(this),
-            block.timestamp + 300 // 5 minutes de deadline
+            block.timestamp + 300
         );
+
+        // Use the amount returned by the swap
+        uint256 receivedEure = swapResult[1];  // The amount of EURe received after the swap
 
         _updateDepositInfo(msg.sender, _fromContract, 0, _amount);
 
-        // Transférer les EURe à l'utilisateur et les frais au compte bancaire
-        require(IERC20(eureToken).transfer(msg.sender, totalDuedAmount), "Transfer failed");
-        require(IERC20(eureToken).transfer(bankAccount, fees), "Transfer failed");
+        // Transfer EURe to user and fees to bank account
+        require(IERC20(eureToken).transfer(msg.sender, receivedEure), "Transfer failed");
+        require(IERC20(farmInfo.depositToken).transfer(bankAccount, fees), "Transfer failed");
 
         emit Withdraw(msg.sender, _fromContract, _amount);
+    }
+
+
+
+    function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo, uint256 withdrawAmount, uint256 totalDuedAmount) private returns (uint256) {
+        if(farmInfo.hasClaimSelector) {
+            bytes memory claimData = abi.encodeWithSelector(farmInfo.claimSelector);
+            (bool claimResult, bytes memory returnedClaimData) = _fromContract.call(claimData);
+            require(claimResult, "Claim failed");
+            return abi.decode(returnedClaimData, (uint256));
+        }
+        return 0;
     }
 
     function _updateDepositInfo(address user, address pool, uint256 depositAmount, uint256 withdrawAmount) private {
@@ -136,27 +153,20 @@ contract TresorBoostCore is Ownable {
         DepositInfo memory depositInfo = deposits[user][pool];
         deposits[user][pool] = DepositInfo({
             pool: pool,
-            amount: depositInfo.amount + depositAmount - withdrawAmount,
+            amount: depositInfo.amount - withdrawAmount + depositAmount,  // Convertir en EURe avant le calcul
             rewardAmount: depositInfo.rewardAmount,
             lastTimeRewardCalculated: block.timestamp
         });
     }
 
-    function _handleRewards(
-        address _fromContract,
-        FarmManager.FarmInfo memory farmInfo,
-        uint256 withdrawAmount,
-        uint256 totalDuedAmount
-    ) private returns (uint256) {
-        if(farmInfo.claimSelector != bytes4(0)) {
-            bytes memory claimData = abi.encodeWithSelector(farmInfo.claimSelector);
-            (bool claimResult, bytes memory returnedClaimData) = _fromContract.call(claimData);
-            require(claimResult, "Claim failed");
-            uint256 claimedAmount = abi.decode(returnedClaimData, (uint256));
-            return claimedAmount - deposits[msg.sender][_fromContract].rewardAmount;
-        } else {
-            return withdrawAmount - totalDuedAmount;
-        }
+    function _manageFees(uint256 withdrawAmount, uint256 claimedAmount, uint256 totalDuedAmount) pure private returns (uint256) {
+        console.log("--------------------------------");
+        console.log("withdrawAmount", withdrawAmount);
+        console.log("claimedAmount", claimedAmount);
+        console.log("totalDuedAmount", totalDuedAmount);
+        console.log("Calculated fees", withdrawAmount + claimedAmount - totalDuedAmount);
+        console.log("--------------------------------");
+        return withdrawAmount + claimedAmount - totalDuedAmount;
     }
 
     function updateRewards(address _pool) private {

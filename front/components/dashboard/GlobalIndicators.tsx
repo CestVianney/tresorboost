@@ -16,7 +16,7 @@ const GlobalIndicators = ({ userData, rewardsData }: { userData: DepositData[], 
             <div className="flex justify-between mt-4">
                 <div className="w-[25%] flex flex-col items-center">
                     <Card className="p-4 space-y-12 flex flex-col items-center w-[100%] h-[100%] bg-gradient-to-r from-white to-gray-600">
-                        <h2 className="text-xl">Trésorerie déposée</h2>
+                        <h2 className="text-xl">Trésorerie engagée</h2>
                         <p className="text-3xl font-bold">{formatNumberFromNumber(totalDeposits)} €</p>
                     </Card>
                 </div>

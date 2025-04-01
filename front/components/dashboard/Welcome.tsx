@@ -8,7 +8,7 @@ const Welcome = ({ username, balance }: { username: string | undefined, balance:
         Bienvenue <span className="text-yellow-500">{shortenAddress(username)}</span> !
       </h1>
       <div className="text-xl">
-        Solde : <span className="text-yellow-500">{balance ? formatNumbers(formatEther(balance)) : '0'}</span>
+        Trésorerie déposée : <span className="text-yellow-500">{balance ? formatNumbers(formatEther(balance)) : '0'}</span>
       </div>
     </div>
   )
