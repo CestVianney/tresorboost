@@ -21,8 +21,10 @@ contract TresorBoostCore is Ownable {
     
     event Deposit(address indexed user, address indexed pool, uint256 amount);
     event Withdraw(address indexed user, address indexed pool, uint256 amount);
+    event RewardsClaimed(address indexed user, address indexed pool, uint256 amount);
+    event FeesClaimed(address indexed user, address indexed pool, uint256 amount);
+    event CoveredSlippage(address indexed user, address indexed pool, uint256 slippage);
 
-    
     mapping(address => mapping(address => DepositInfo)) public deposits;
 
     FarmManager private farmManager; 
@@ -81,6 +83,7 @@ contract TresorBoostCore is Ownable {
         _updateDepositInfo(msg.sender, _toContract, _amount, 0);
 
         emit Deposit(msg.sender, _toContract, _amount);
+        emit CoveredSlippage(msg.sender, _toContract, _amount - receivedAmount);
     }
 
     function withdrawFrom(address _fromContract, uint256 _amount) public {
@@ -92,16 +95,26 @@ contract TresorBoostCore is Ownable {
         uint256 totalDuedAmount = _amount + depositInfo.rewardAmount;
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromContract);
         
+        // User deposits in the farms' asset
+        bytes memory maxWithdrawSelector = abi.encodeWithSelector(farmInfo.maxWithdrawSelector, msg.sender);
+        (bool maxWithdrawResult, bytes memory returnedMaxWithdrawData) = _fromContract.call(maxWithdrawSelector);
+        require(maxWithdrawResult, "Max withdraw failed");
+        uint256 maxWithdraw = abi.decode(returnedMaxWithdrawData, (uint256));
+        console.log("maxWithdraw", maxWithdraw);
+        uint256 rate = _amount * 10000 / depositInfo.amount;
+        uint256 realWithdrawAmount = maxWithdraw * rate / 10000;
+        console.log("realWithdrawAmount", realWithdrawAmount);
         // Withdraw from farm
-        bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount, msg.sender);
-        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawData);
-        require(withdrawResult, "Withdraw failed");
+        bytes memory withdrawSelector = abi.encodeWithSelector(farmInfo.withdrawSelector, realWithdrawAmount, msg.sender);
+        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawSelector);
+        require(withdrawResult, "Withdraw from vault 110 failed");
         uint256 withdrawnAmount = abi.decode(returnedData, (uint256));
+        console.log("withdrawnAmount", withdrawnAmount);
 
         //Gather tokens withdrawed + claimed tokens if a claim function is implemented
         //Otherwise, it will add withdrawAmount + 0
-        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo, withdrawnAmount, totalDuedAmount);
-        uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
+        uint256 claimedAmount = _claimRewards(_fromContract, farmInfo);
+        uint256 fees = _manageFees(_amount, depositInfo.rewardAmount, totalDuedAmount);
 
         // Swap des tokens reçus en EURe
         require(IERC20(farmInfo.depositToken).approve(address(router), withdrawnAmount + claimedAmount), "Approve failed");
@@ -129,16 +142,18 @@ contract TresorBoostCore is Ownable {
 
         _updateDepositInfo(msg.sender, _fromContract, 0, _amount);
 
-        // Transfer EURe to user and fees to bank account
-        require(IERC20(eureToken).transfer(msg.sender, receivedEure), "Transfer failed");
+        require(IERC20(eureToken).transfer(msg.sender, totalDuedAmount), "Transfer failed");
         require(IERC20(farmInfo.depositToken).transfer(bankAccount, fees), "Transfer failed");
 
         emit Withdraw(msg.sender, _fromContract, _amount);
+        emit RewardsClaimed(msg.sender, _fromContract, depositInfo.rewardAmount);
+        emit FeesClaimed(bankAccount, _fromContract, fees);
+        emit CoveredSlippage(msg.sender, _fromContract, totalDuedAmount - receivedEure );
     }
 
 
 
-    function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo, uint256 withdrawAmount, uint256 totalDuedAmount) private returns (uint256) {
+    function _claimRewards(address _fromContract, FarmManager.FarmInfo memory farmInfo) private returns (uint256) {
         if(farmInfo.hasClaimSelector) {
             bytes memory claimData = abi.encodeWithSelector(farmInfo.claimSelector);
             (bool claimResult, bytes memory returnedClaimData) = _fromContract.call(claimData);

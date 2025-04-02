@@ -81,9 +81,12 @@ describe("TresorBoostCore", function () {
             "deposit(uint256,address)",
             "withdraw(uint256,address)",
             "0x00000000",
+            "getMaxWithdraw(address)",
             false
         );
 
+        await USDT.mint(tresorBoostCore.getAddress(), ethers.parseEther("100000"));
+        await EURe.mint(tresorBoostCore.getAddress(), ethers.parseEther("100000"));
         return {
             tresorBoostCore,
             farmManager,
@@ -416,6 +419,7 @@ describe("TresorBoostCore", function () {
                 "deposit(uint256,address)",
                 "withdraw(uint256,address)",
                 "0x00000000",
+                "getMaxWithdraw(address)",
                 false
             );
 
@@ -426,29 +430,14 @@ describe("TresorBoostCore", function () {
 
             await USDT.mint(vault.getAddress(), ethers.parseEther("100000"));
 
+
             // Attendre 1 an pour générer des récompenses
-            await ethers.provider.send("evm_increaseTime", [365 * 24 * 60 * 60]);
+            await ethers.provider.send("evm_increaseTime", [60]);
             await ethers.provider.send("evm_mine");
 
-            // Vérifier le solde dans le Vault avant le retrait
-            const vaultBalance = await vault.balances(owner.address);
-            console.log("Solde utilisateur dans le Vault avant retrait:", ethers.formatEther(vaultBalance));
-
-            // Vérifier le solde dans le Vault avant le retrait
-            const usdtVaultBalance = await USDT.balanceOf(vault.getAddress());
-            console.log("Solde dans le Vault avant retrait:", ethers.formatEther(usdtVaultBalance));
-
-            // Vérifier les récompenses calculées
-            const rewards = await vault.getRewards(owner.address);
-            console.log("Récompenses calculées:", ethers.formatEther(rewards));
-
-            // Vérifier le montant à retirer
-            const withdrawAmount = ethers.parseEther("100");
-            console.log("Montant à retirer:", ethers.formatEther(withdrawAmount));
         });
         it("Should update", async function () {
-            await tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("100"));
-
+            await tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000"));
         });
         it("Should revert if user hasn't deposited funds", async function () {
             try {

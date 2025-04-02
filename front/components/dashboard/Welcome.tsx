@@ -1,7 +1,7 @@
 import shortenAddress from '@/utils/utils'
 import { formatEther, formatNumbers } from '@/lib/utils'
 
-const Welcome = ({ username, balance }: { username: string | undefined, balance: BigInt }) => {
+const Welcome = ({ username, userEuroBalance: balance }: { username: string | undefined, userEuroBalance: BigInt }) => {
   return (
     <div className="flex justify-between items-center">
       <h1 className="font-bold text-3xl">

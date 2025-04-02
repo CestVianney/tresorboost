@@ -6,79 +6,35 @@ import ProfileDetails from '@/components/dashboard/ProfileDetails'
 import ActivityHistory from '@/components/dashboard/ActivityHistory'
 import { Separator } from "@/components/ui/separator"
 import { useExistingFarms } from '@/hooks/useFarms'
-import { useAccount, useReadContract, useReadContracts } from 'wagmi'
-import { EURE_ADDRESS, EURE_ABI } from '@/constants/EUReContract'
-import { TBC_ADDRESS, TBC_ABI } from '@/constants/TresorBoostCoreContract'
+import { useAccount } from 'wagmi'
 import { useEventData } from '@/hooks/useEventData'
-import { UserActivityData } from '@/constants/UserActivityData'
-import { DepositData } from '@/constants/DepositData'
-import { Abi, formatEther } from 'viem'
 import { formatNumberFromNumber } from '@/utils/utils'
+import { EventTypesEnum } from '@/enums/EventTypesEnum'
+import { UserActivityData } from '@/constants/UserActivityData'
 
 export default function Dashboard() {
-
+    const [isClient, setIsClient] = useState(false);
     const { farms } = useExistingFarms()
     const { address, isConnected } = useAccount()
-    const { userActivity } = useEventData()
-
-    const [balance, setBalance] = useState<BigInt>(BigInt(0))
-    const { data: balanceData } = useReadContract({
-        address: EURE_ADDRESS, 
-        abi: EURE_ABI,
-        functionName: 'balanceOf',
-        args: [address as `0x${string}`],
-        query: {
-            enabled: !!address
-        }
-    })
-    
-    const [userData, setUserData] = useState<DepositData[]>([])
-
-    const contracts = userActivity
-        .filter((activity: UserActivityData, index: number, self: UserActivityData[]) => 
-            index === self.findIndex((a: UserActivityData) => a.pool === activity.pool)
-        )
-        .map((activity: UserActivityData) => {
-            return {
-                address: TBC_ADDRESS as `0x${string}`,
-                abi: TBC_ABI as Abi,
-                functionName: 'deposits',
-                args: [activity.user as `0x${string}`, activity.pool as `0x${string}`],
-            }
-        })
-
-    const { data: data } = useReadContracts({
-        contracts: contracts,
-        query: {enabled: userActivity.length > 0 && !!address}
-    })
+    const { userActivity, userEuroBalance, userData } = useEventData()
 
     useEffect(() => {
-        if (!isConnected || !address) {
-            setBalance(BigInt(0));
-            setUserData([]);
-            return;
-        }
-        
-        setBalance(balanceData ? balanceData as BigInt : BigInt(0));
-        
-        if (data) {
-            const validData: DepositData[] = data
-                .filter((item): item is { result: { amount: bigint; rewardAmount: bigint; lastTimeRewardCalculated: bigint; pool: string }; status: "success" } => 
-                    item.status === "success" && item.result !== undefined)
-                .map((item: any) => {
-                    const [pool, amount, rewardAmount, lastTimeRewardCalculated] = item.result;
-                    return {
-                        pool: pool as `0x${string}`,
-                        amount: Number(formatEther(amount)),
-                        rewardAmount: Number(formatEther(rewardAmount)),
-                        lastTimeRewardCalculated: Number(lastTimeRewardCalculated)
-                    };
-                });
-            setUserData(validData);
-        }
-    }, [isConnected, address, balanceData, data])
+        setIsClient(true);
+    }, []);
 
     const calculateRewards = () => {
+        if (!isClient) return {
+            totalRewards: 0,
+            claimedRewards: 0,
+            lastMinuteRewards: 0,
+            lastFiveMinutesRewards: 0,
+            lastHourRewards: 0,
+            lastDayRewards: 0,
+            lastWeekRewards: 0,
+            lastMonthRewards: 0,
+            lastYearRewards: 0,
+        };
+
         const pools = userActivity.reduce((acc: Record<string, UserActivityData[]>, curr) => {
             const pool = curr.pool;
             if (!acc[pool]) {
@@ -89,6 +45,7 @@ export default function Dashboard() {
         }, {} as Record<string, UserActivityData[]>);
 
         let totalRewards = 0;
+        let claimedRewards = 0;
         let lastMinuteRewards = 0;
         let lastFiveMinutesRewards = 0;
         let lastHourRewards = 0;
@@ -108,7 +65,7 @@ export default function Dashboard() {
             const lastEventTimestamp = Math.floor(Date.now() / 1000);
             for (const event of pools[pool]) {
                 const adjustedTimestamp = event.timestamp + (27 * 60); // Ajouter 27 minutes
-                if (event.type === 'deposit') {
+                if (event.type === EventTypesEnum.Deposit) {
                     const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                     totalRewards += event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMinuteRewards += timeElapsed > 60 ? event.amount * rewardRate * 60 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
@@ -118,7 +75,7 @@ export default function Dashboard() {
                     lastWeekRewards += timeElapsed > 604800 ? event.amount * rewardRate * 604800 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMonthRewards += timeElapsed > 2629746 ? event.amount * rewardRate * 2629746 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastYearRewards += timeElapsed > 31536000 ? event.amount * rewardRate * 31536000 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
-                } else if (event.type === 'withdrawal') {
+                } else if (event.type === EventTypesEnum.Withdraw) {
                     const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                     totalRewards -= event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMinuteRewards -= timeElapsed > 60 ? event.amount * rewardRate * 60 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
@@ -128,12 +85,15 @@ export default function Dashboard() {
                     lastWeekRewards -= timeElapsed > 604800 ? event.amount * rewardRate * 604800 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastMonthRewards -= timeElapsed > 2629746 ? event.amount * rewardRate * 2629746 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
                     lastYearRewards -= timeElapsed > 31536000 ? event.amount * rewardRate * 31536000 / (365 * 86400) : event.amount * rewardRate * timeElapsed / (365 * 86400);
+                } else if (event.type === EventTypesEnum.RewardsClaimed) {
+                    claimedRewards += event.amount;
                 }
             }
         }
         
         return {
             totalRewards: Number(formatNumberFromNumber(totalRewards)),
+            claimedRewards: Number(formatNumberFromNumber(claimedRewards)),
             lastMinuteRewards: Number(formatNumberFromNumber(lastMinuteRewards)),
             lastFiveMinutesRewards: Number(formatNumberFromNumber(lastFiveMinutesRewards)),
             lastHourRewards: Number(formatNumberFromNumber(lastHourRewards)),
@@ -144,22 +104,26 @@ export default function Dashboard() {
         };
     };
 
+    if (!isClient) {
+        return null;
+    }
+
     return (
         <div className="flex flex-col items-center h-screen">
             <div className="w-full h-[4vh]">
-                <Welcome username={address} balance={balance} />
+                <Welcome username={address} userEuroBalance={userEuroBalance} />
             </div>
             <Separator />
 
             <div className="flex flex-1 flex-col w-full">
                 <div className="flex-[1_1_20%] mb-5">
-                    <GlobalIndicators userData={userData} rewardsData={calculateRewards()} />
+                    <GlobalIndicators userData={userData} rewardsData={calculateRewards()} userActivity={userActivity} farmActivity={farms} />
                 </div>
                 <Separator />
                 <div className="flex-[2_1_35%] mt-5">
                     <ProfileDetails 
                     farms={farms} 
-                    balance={balance}  
+                    userEuroBalance={userEuroBalance}  
                     userActivity={userActivity} />
                 </div>
                 <Separator />
