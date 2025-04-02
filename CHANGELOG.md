@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/CestVianney/tresorboost/compare/v1.1.3...v1.2.0) (2025-04-02)
+
+
+### Features
+
+* fonctionnalités basiques stables + glow up css ([9b46f99](https://github.com/CestVianney/tresorboost/commit/9b46f997a979d6fdf6336cb33db8eb336d414f8f))
+* fonctionnalités basiques stables + glow up css ([72b5ac8](https://github.com/CestVianney/tresorboost/commit/72b5ac8be3e770b28ec6d9cfe9739a4d4b556031))
+
 ## [1.1.3](https://github.com/CestVianney/tresorboost/compare/v1.1.2...v1.1.3) (2025-04-01)
 
 ## [1.1.2](https://github.com/CestVianney/tresorboost/compare/v1.1.1...v1.1.2) (2025-03-31)
