@@ -129,6 +129,7 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDC10, v
             "deposit(uint256,address)",
             "withdraw(uint256,address)",
             "getRewards(address)",
+            "getMaxWithdraw(address)",
             false
         );
         console.log("✅ Farm ", farm.farmType, " added to:", await farmManager.getAddress());

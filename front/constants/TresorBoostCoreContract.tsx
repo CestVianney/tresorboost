@@ -103,6 +103,31 @@ export const TBC_ABI = [
       {
         "indexed": false,
         "internalType": "uint256",
+        "name": "slippage",
+        "type": "uint256"
+      }
+    ],
+    "name": "CoveredSlippage",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
@@ -352,4 +377,4 @@ export const TBC_ABI = [
     "type": "function"
   }
 ]
-export const TBC_ADDRESS = "0x07dfd40280EC4C35d31937D077C7365a4058dFf6"
+export const TBC_ADDRESS = "0xc1A6f0348F93E05e2FD30d7306cb88068557f476"

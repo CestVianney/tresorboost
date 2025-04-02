@@ -32,7 +32,7 @@ contract Vault {
     }
 
     function withdraw(uint256 amount, address user) external returns (uint256) {
-                console.log("-----------BEFORE UPDATE REWARDS");
+        console.log("-----------BEFORE UPDATE REWARDS");
         console.log("VAULT : WITHDRAW");
         console.log("amount", amount);
         console.log("balances[user]", balances[user]);
@@ -92,5 +92,9 @@ contract Vault {
 
     function getRewards(address user) external view returns (uint256) {
         return _calculateRewards(user);
+    }
+
+    function getMaxWithdraw(address user) external view returns (uint256) {
+        return balances[user];
     }
 }

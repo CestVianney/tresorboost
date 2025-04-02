@@ -137,6 +137,11 @@ export const FARM_MANAGER_ABI = [
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "_maxWithdrawFunction",
+        "type": "string"
+      },
+      {
         "internalType": "bool",
         "name": "_hasClaimSelector",
         "type": "bool"
@@ -159,6 +164,21 @@ export const FARM_MANAGER_ABI = [
     "outputs": [
       {
         "components": [
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint16",
+            "name": "rewardRate",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "farmType",
+            "type": "uint8"
+          },
           {
             "internalType": "address",
             "name": "farmAddress",
@@ -190,19 +210,9 @@ export const FARM_MANAGER_ABI = [
             "type": "bytes4"
           },
           {
-            "internalType": "uint8",
-            "name": "farmType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint16",
-            "name": "rewardRate",
-            "type": "uint16"
-          },
-          {
-            "internalType": "bool",
-            "name": "isActive",
-            "type": "bool"
+            "internalType": "bytes4",
+            "name": "maxWithdrawSelector",
+            "type": "bytes4"
           },
           {
             "internalType": "bool",
@@ -248,6 +258,21 @@ export const FARM_MANAGER_ABI = [
       {
         "components": [
           {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint16",
+            "name": "rewardRate",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "farmType",
+            "type": "uint8"
+          },
+          {
             "internalType": "address",
             "name": "farmAddress",
             "type": "address"
@@ -278,19 +303,9 @@ export const FARM_MANAGER_ABI = [
             "type": "bytes4"
           },
           {
-            "internalType": "uint8",
-            "name": "farmType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint16",
-            "name": "rewardRate",
-            "type": "uint16"
-          },
-          {
-            "internalType": "bool",
-            "name": "isActive",
-            "type": "bool"
+            "internalType": "bytes4",
+            "name": "maxWithdrawSelector",
+            "type": "bytes4"
           },
           {
             "internalType": "bool",
@@ -322,4 +337,4 @@ export const FARM_MANAGER_ABI = [
     "type": "function"
   }
 ]
-export const FARM_MANAGER_ADDRESS = "0xCdA381d15F36D82cA56dAb6A35880D3361D3a12F"
+export const FARM_MANAGER_ADDRESS = "0x114fB1B21f87716DF7491A74cfd399ED6D7eeffE"

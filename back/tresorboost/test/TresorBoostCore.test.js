@@ -81,6 +81,7 @@ describe("TresorBoostCore", function () {
             "deposit(uint256,address)",
             "withdraw(uint256,address)",
             "0x00000000",
+            "getMaxWithdraw(address)",
             false
         );
 
@@ -418,6 +419,7 @@ describe("TresorBoostCore", function () {
                 "deposit(uint256,address)",
                 "withdraw(uint256,address)",
                 "0x00000000",
+                "getMaxWithdraw(address)",
                 false
             );
 
@@ -430,7 +432,7 @@ describe("TresorBoostCore", function () {
 
 
             // Attendre 1 an pour générer des récompenses
-            await ethers.provider.send("evm_increaseTime", [365 * 24 * 60 * 60]);
+            await ethers.provider.send("evm_increaseTime", [60]);
             await ethers.provider.send("evm_mine");
 
         });

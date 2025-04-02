@@ -76,13 +76,14 @@ contract TresorBoostCore is Ownable {
         require(IERC20(farmInfo.depositToken).approve(_toContract, receivedAmount), "Approve failed");
 
         // Faire le dépôt dans le farm
-        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, _amount, msg.sender);
+        bytes memory depositData = abi.encodeWithSelector(farmInfo.depositSelector, receivedAmount, msg.sender);
         (bool depositResult,) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
 
         _updateDepositInfo(msg.sender, _toContract, _amount, 0);
 
         emit Deposit(msg.sender, _toContract, _amount);
+        emit CoveredSlippage(msg.sender, _toContract, _amount - receivedAmount);
     }
 
     function withdrawFrom(address _fromContract, uint256 _amount) public {
@@ -94,16 +95,26 @@ contract TresorBoostCore is Ownable {
         uint256 totalDuedAmount = _amount + depositInfo.rewardAmount;
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_fromContract);
         
+        // User deposits in the farms' asset
+        bytes memory maxWithdrawSelector = abi.encodeWithSelector(farmInfo.maxWithdrawSelector, msg.sender);
+        (bool maxWithdrawResult, bytes memory returnedMaxWithdrawData) = _fromContract.call(maxWithdrawSelector);
+        require(maxWithdrawResult, "Max withdraw failed");
+        uint256 maxWithdraw = abi.decode(returnedMaxWithdrawData, (uint256));
+        console.log("maxWithdraw", maxWithdraw);
+        uint256 rate = _amount * 10000 / depositInfo.amount;
+        uint256 realWithdrawAmount = maxWithdraw * rate / 10000;
+        console.log("realWithdrawAmount", realWithdrawAmount);
         // Withdraw from farm
-        bytes memory withdrawData = abi.encodeWithSelector(farmInfo.withdrawSelector, _amount, msg.sender);
-        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawData);
-        require(withdrawResult, "Withdraw failed");
+        bytes memory withdrawSelector = abi.encodeWithSelector(farmInfo.withdrawSelector, realWithdrawAmount, msg.sender);
+        (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawSelector);
+        require(withdrawResult, "Withdraw from vault 110 failed");
         uint256 withdrawnAmount = abi.decode(returnedData, (uint256));
+        console.log("withdrawnAmount", withdrawnAmount);
 
         //Gather tokens withdrawed + claimed tokens if a claim function is implemented
         //Otherwise, it will add withdrawAmount + 0
         uint256 claimedAmount = _claimRewards(_fromContract, farmInfo);
-        uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
+        uint256 fees = _manageFees(_amount, depositInfo.rewardAmount, totalDuedAmount);
 
         // Swap des tokens reçus en EURe
         require(IERC20(farmInfo.depositToken).approve(address(router), withdrawnAmount + claimedAmount), "Approve failed");

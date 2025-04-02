@@ -5,4 +5,5 @@ export interface UserActivityData {
     amount: number;
     blockNumber: BigInt;
     timestamp: number;
+    hash: string;
 }

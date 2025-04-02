@@ -35,11 +35,18 @@ const Sidebar = ({ className }: { className?: string }) => {
             </a>
           </li>
           {isOwner && (
-            <li>
-              <a href="/managefarms" className="block w-full text-left p-2 rounded hover:bg-gray-600">
-                Manage farms
-              </a>
-            </li>
+            <>
+              <li>
+                <a href="/managefarms" className="block w-full text-left p-2 rounded hover:bg-gray-600">
+                  Manage farms
+                </a>
+              </li>
+              <li>
+                <a href="/treasurelogs" className="block w-full text-left p-2 rounded hover:bg-gray-600">
+                  Treasure logs
+                </a>
+              </li>
+            </>
           )}
         </ul>
       </nav>

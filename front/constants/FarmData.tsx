@@ -5,6 +5,7 @@ export interface FarmData {
     depositSelector: string;
     withdrawSelector: string;
     claimSelector: string;
+    maxWithdrawSelector: string;
     farmType: number;
     rewardRate: number;
     isActive: boolean;

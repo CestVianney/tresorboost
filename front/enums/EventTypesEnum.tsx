@@ -3,4 +3,5 @@ export enum EventTypesEnum {
     Withdraw = 'Withdraw',
     RewardsClaimed = 'RewardsClaimed',
     FeesClaimed = 'FeesClaimed',
+    CoveredSlippage = 'CoveredSlippage',
 }

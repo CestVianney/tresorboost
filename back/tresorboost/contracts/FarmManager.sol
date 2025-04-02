@@ -13,15 +13,16 @@ contract FarmManager is Ownable {
     );
 
     struct FarmInfo {
+        bool isActive;
+        uint16 rewardRate;
+        uint8 farmType;
         address farmAddress;
         address depositToken;
         address rewardToken;
         bytes4 depositSelector;
         bytes4 withdrawSelector;
         bytes4 claimSelector;
-        uint8 farmType;
-        uint16 rewardRate;
-        bool isActive;
+        bytes4 maxWithdrawSelector;
         bool hasClaimSelector;
     }
 
@@ -39,6 +40,7 @@ contract FarmManager is Ownable {
         string memory _depositFunction,
         string memory _withdrawFunction,
         string memory _claimFunction,
+        string memory _maxWithdrawFunction,
         bool _hasClaimSelector
     ) public onlyOwner {
         farms[_farmAddress] = FarmInfo({
@@ -51,7 +53,8 @@ contract FarmManager is Ownable {
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
             claimSelector: bytes4(keccak256(bytes(_claimFunction))),
-            hasClaimSelector: _hasClaimSelector
+            hasClaimSelector: _hasClaimSelector,
+            maxWithdrawSelector: bytes4(keccak256(bytes(_maxWithdrawFunction)))
         });
 
         emit FarmAdded(_farmAddress);
