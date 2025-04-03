@@ -64,7 +64,7 @@ export default function Dashboard() {
             // Convertir le timestamp en secondes
             const lastEventTimestamp = Math.floor(Date.now() / 1000);
             for (const event of pools[pool]) {
-                const adjustedTimestamp = event.timestamp + (27 * 60); // Ajouter 27 minutes
+                const adjustedTimestamp = event.timestamp + (26 * 60); // Ajouter 27 minutes
                 if (event.type === EventTypesEnum.Deposit) {
                     const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                     totalRewards += event.amount * rewardRate * timeElapsed / (365 * 86400);

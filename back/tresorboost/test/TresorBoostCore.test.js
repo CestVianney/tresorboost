@@ -263,9 +263,6 @@ describe("TresorBoostCore", function () {
                 amount
             );
             const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
-            console.log("-------------------------------------------")
-            console.log("depositInfoAfter.amount", depositInfoAfter.amount)
-            console.log("-------------------------------------------")
             expect(depositInfoAfter.amount).to.equal(amount);
         });
         it("Should update sender rewards infos", async function () {
@@ -430,14 +427,68 @@ describe("TresorBoostCore", function () {
 
             await USDT.mint(vault.getAddress(), ethers.parseEther("100000"));
 
-
-            // Attendre 1 an pour générer des récompenses
-            await ethers.provider.send("evm_increaseTime", [60]);
+        });
+        it("Should set rewards to 0 in TBC contract when user withdraws any amount", async function () {
+            
+            await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1"));
+            await tresorBoostCore.connect(owner).depositTo(
+                await vault.getAddress(),
+                ethers.parseEther("1")
+            );
+            await ethers.provider.send("evm_increaseTime", [31536000]);
             await ethers.provider.send("evm_mine");
 
+            const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
+            expect(depositInfoBefore.rewardAmount).to.be.gt(0);
+            await tresorBoostCore.connect(owner).withdrawFrom(
+                await vault.getAddress(),
+                ethers.parseEther("100")
+            );
+            const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
+            expect(depositInfoAfter.rewardAmount).to.be.eq(ethers.parseEther("0"));
         });
-        it("Should update", async function () {
-            await tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000"));
+        it("Should decrease user's balance in TBC contractwhen he withdraws", async function () {
+            const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
+            const balanceBefore = depositInfoBefore.amount;
+            expect(balanceBefore).to.equal(ethers.parseEther("1000"));
+            
+            await tresorBoostCore.connect(owner).withdrawFrom(
+                await vault.getAddress(),
+                ethers.parseEther("100")
+            );
+            
+            const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
+            const balanceAfter = depositInfoAfter.amount;
+            expect(balanceAfter).to.equal(ethers.parseEther("900"));
+        });
+        it("Should not receive fees if stake is too short to cover swap losses", async function () {
+            await expect(tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000")
+            )).to.emit(tresorBoostCore, "FeesClaimed").withArgs(owner.address, await vault.getAddress(), 0);
+        });
+        it("Should receive fees if staked for enough time to cover swap losses", async function () {
+            // Attendre 1 an pour générer des récompenses
+            await ethers.provider.send("evm_increaseTime", [31536000]);
+            await ethers.provider.send("evm_mine");
+
+            const tx = await tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000"));
+            const receipt = await tx.wait();
+            
+            // Trouver l'événement FeesClaimed
+            const feesClaimedEvent = receipt.logs.find(log => {
+                try {
+                    const parsedLog = tresorBoostCore.interface.parseLog(log);
+                    return parsedLog && parsedLog.name === "FeesClaimed";
+                } catch (e) {
+                    return false;
+                }
+            });
+            
+            expect(feesClaimedEvent).to.not.be.undefined;
+            const parsedEvent = tresorBoostCore.interface.parseLog(feesClaimedEvent);
+            const feesAmount = parsedEvent.args[2];
+            
+            // Vérifier que les frais sont supérieurs à une valeur minimale (par exemple 1 EURe)
+            expect(feesAmount).to.be.gt(ethers.parseEther("1"));
         });
         it("Should revert if user hasn't deposited funds", async function () {
             try {

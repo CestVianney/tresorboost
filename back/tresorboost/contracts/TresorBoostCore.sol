@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./FarmManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "hardhat/console.sol";
 
 contract TresorBoostCore is Ownable {
     struct DepositInfo {
@@ -80,7 +79,7 @@ contract TresorBoostCore is Ownable {
         (bool depositResult,) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
 
-        _updateDepositInfo(msg.sender, _toContract, _amount, 0);
+        _updateDepositInfo(msg.sender, _toContract, _amount, 0, false);
 
         emit Deposit(msg.sender, _toContract, _amount);
         emit CoveredSlippage(msg.sender, _toContract, _amount - receivedAmount);
@@ -100,22 +99,18 @@ contract TresorBoostCore is Ownable {
         (bool maxWithdrawResult, bytes memory returnedMaxWithdrawData) = _fromContract.call(maxWithdrawSelector);
         require(maxWithdrawResult, "Max withdraw failed");
         uint256 maxWithdraw = abi.decode(returnedMaxWithdrawData, (uint256));
-        console.log("maxWithdraw", maxWithdraw);
         uint256 rate = _amount * 10000 / depositInfo.amount;
         uint256 realWithdrawAmount = maxWithdraw * rate / 10000;
-        console.log("realWithdrawAmount", realWithdrawAmount);
         // Withdraw from farm
         bytes memory withdrawSelector = abi.encodeWithSelector(farmInfo.withdrawSelector, realWithdrawAmount, msg.sender);
         (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawSelector);
-        require(withdrawResult, "Withdraw from vault 110 failed");
+        require(withdrawResult, "Withdraw from vault failed");
         uint256 withdrawnAmount = abi.decode(returnedData, (uint256));
-        console.log("withdrawnAmount", withdrawnAmount);
 
         //Gather tokens withdrawed + claimed tokens if a claim function is implemented
         //Otherwise, it will add withdrawAmount + 0
         uint256 claimedAmount = _claimRewards(_fromContract, farmInfo);
-        uint256 fees = _manageFees(_amount, depositInfo.rewardAmount, totalDuedAmount);
-
+        uint256 fees = _manageFees(withdrawnAmount, claimedAmount, totalDuedAmount);
         // Swap des tokens reçus en EURe
         require(IERC20(farmInfo.depositToken).approve(address(router), withdrawnAmount + claimedAmount), "Approve failed");
 
@@ -140,7 +135,7 @@ contract TresorBoostCore is Ownable {
         // Use the amount returned by the swap
         uint256 receivedEure = swapResult[1];  // The amount of EURe received after the swap
 
-        _updateDepositInfo(msg.sender, _fromContract, 0, _amount);
+        _updateDepositInfo(msg.sender, _fromContract, 0, _amount, true);
 
         require(IERC20(eureToken).transfer(msg.sender, totalDuedAmount), "Transfer failed");
         require(IERC20(farmInfo.depositToken).transfer(bankAccount, fees), "Transfer failed");
@@ -163,25 +158,23 @@ contract TresorBoostCore is Ownable {
         return 0;
     }
 
-    function _updateDepositInfo(address user, address pool, uint256 depositAmount, uint256 withdrawAmount) private {
+    function _updateDepositInfo(address user, address pool, uint256 depositAmount, uint256 withdrawAmount, bool hasClaimed) private {
         updateRewards(pool);
         DepositInfo memory depositInfo = deposits[user][pool];
         deposits[user][pool] = DepositInfo({
             pool: pool,
             amount: depositInfo.amount - withdrawAmount + depositAmount,  // Convertir en EURe avant le calcul
-            rewardAmount: depositInfo.rewardAmount,
+            rewardAmount: hasClaimed ? 0 : depositInfo.rewardAmount,
             lastTimeRewardCalculated: block.timestamp
         });
     }
 
     function _manageFees(uint256 withdrawAmount, uint256 claimedAmount, uint256 totalDuedAmount) pure private returns (uint256) {
-        console.log("--------------------------------");
-        console.log("withdrawAmount", withdrawAmount);
-        console.log("claimedAmount", claimedAmount);
-        console.log("totalDuedAmount", totalDuedAmount);
-        console.log("Calculated fees", withdrawAmount + claimedAmount - totalDuedAmount);
-        console.log("--------------------------------");
-        return withdrawAmount + claimedAmount - totalDuedAmount;
+        uint256 totalWithdrawn = withdrawAmount + claimedAmount;
+        if(totalWithdrawn > totalDuedAmount) {
+            return totalWithdrawn - totalDuedAmount;
+        }
+        return 0;
     }
 
     function updateRewards(address _pool) private {

@@ -65,17 +65,4 @@ contract FarmManager is Ownable {
     ) public view returns (FarmInfo memory) {
         return farms[_farmAddress];
     }
-
-    function setFarmInfo(
-        address _farmAddress,
-        FarmInfo memory _farmInfo
-    ) public onlyOwner {
-        farms[_farmAddress] = _farmInfo;
-        emit FarmUpdated(
-            _farmAddress,
-            _farmInfo.depositToken,
-            _farmInfo.isActive,
-            _farmInfo.farmType
-        );
-    }
 }

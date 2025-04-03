@@ -51,7 +51,7 @@ const ProfileDetails: React.FC<ProfileDetailsProps> = ({ farms, userEuroBalance,
             let totalRewards = 0;
             let claimedRewards = 0;
             for (const event of pools[pool]) {
-                const adjustedTimestamp = event.timestamp + (27 * 60);
+                const adjustedTimestamp = event.timestamp + (26 * 60);
                 const timeElapsed = lastEventTimestamp - adjustedTimestamp;
                 if(event.type === EventTypesEnum.Deposit) {
                     currentDeposit += event.amount;

@@ -347,4 +347,4 @@ export const EURE_ABI = [
       "type": "function"
     }
   ];
-export const EURE_ADDRESS = "0x505CE1c9cB03e62A2D9e8dEC5c84e8cfD353197d";
+export const EURE_ADDRESS = "0xeD5c2aFcb61CDc7B1e9F26F824a87F38a58bfa58";

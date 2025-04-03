@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
 contract Vault {
     IERC20 public immutable token;
@@ -32,41 +31,16 @@ contract Vault {
     }
 
     function withdraw(uint256 amount, address user) external returns (uint256) {
-        console.log("-----------BEFORE UPDATE REWARDS");
-        console.log("VAULT : WITHDRAW");
-        console.log("amount", amount);
-        console.log("balances[user]", balances[user]);
-        console.log("cumulatedRewards[user]", cumulatedRewards[user]);
-        console.log("--------------------------------");
         require(amount > 0, "Amount must be greater than 0");
         require(balances[user] >= amount, "Insufficient balance");
-        console.log("-----------BEFORE UPDATE REWARDS");
-        console.log("VAULT : WITHDRAW");
-        console.log("amount", amount);
-        console.log("balances[user]", balances[user]);
-        console.log("cumulatedRewards[user]", cumulatedRewards[user]);
-        console.log("--------------------------------");
+        
         uint256 rewards = _updateRewards(user);
-        console.log("-----------AFTER UPDATE REWARDS");
-        console.log("rewards", rewards);
-        console.log("cumulatedRewards[user]", cumulatedRewards[user]);
-        console.log("lastUpdateTime[user]", lastUpdateTime[user]);
-        console.log("balances[user]", balances[user]);
-        console.log("--------------------------------");
+
         uint256 totalAmount = amount + rewards;
         balances[user] -= amount;
-        cumulatedRewards[user] -= rewards;
+        cumulatedRewards[user] = 0;
         lastUpdateTime[user] = block.timestamp;
-        console.log("-----------AFTER DIMINUSHING VALUES");
-        console.log("rewards", rewards);
-        console.log("cumulatedRewards[user]", cumulatedRewards[user]);
-        console.log("lastUpdateTime[user]", lastUpdateTime[user]);
-        console.log("balances[user]", balances[user]);
-        console.log("--------------------------------");
         require(token.transfer(msg.sender, totalAmount), "Transfer failed");
-        console.log("-----------AFTER TRANSFER");
-        console.log("totalAmount", totalAmount);
-        console.log("--------------------------------");
         emit Withdrawn(user, totalAmount);
         return totalAmount;
     }
@@ -77,7 +51,7 @@ contract Vault {
             cumulatedRewards[user] += rewards;
             lastUpdateTime[user] = block.timestamp;
         }
-        return rewards;
+        return cumulatedRewards[user];
     }
 
     function _calculateRewards(address user) internal view returns (uint256) {
