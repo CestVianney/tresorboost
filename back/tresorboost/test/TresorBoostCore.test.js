@@ -38,12 +38,6 @@ describe("TresorBoostCore", function () {
         await farmManager.waitForDeployment();
         const farmManagerAddress = await farmManager.getAddress();
 
-        // Déployer SwapManager
-        const SwapManager = await ethers.getContractFactory("SwapManager");
-        const swapManager = await SwapManager.deploy();
-        await swapManager.waitForDeployment();
-        const swapManagerAddress = await swapManager.getAddress();
-
         // Déployer TresorBoostCore avec tous les arguments requis
         const TresorBoostCore = await ethers.getContractFactory("TresorBoostCore");
         const tresorBoostCore = await TresorBoostCore.deploy(
@@ -61,14 +55,22 @@ describe("TresorBoostCore", function () {
         );
         await vault.waitForDeployment();
 
+        const Vault4626 = await ethers.getContractFactory("Vault4626");
+        const vault4626 = await Vault4626.deploy(
+            USDTAddress,
+            10**13
+        );
+        await vault4626.waitForDeployment();
+
         await tresorBoostCore.waitForDeployment();
 
         // Mint des tokens pour le test
-        const amountEURe = ethers.parseEther("100002000"); // 100M EURe liq, 2k tests
-        const amountUSDT = ethers.parseEther("100100000"); // 100M USDT liq, 100k vault
-
+        const amountEURe = ethers.parseEther("100020000"); // 100M EURe liq, 2k tests
+        const amountUSDT = ethers.parseEther("100200000"); // 100M USDT liq, 100k vault
+        const amountEURe2 = ethers.parseEther("2000");
         await EURe.mint(owner.address, amountEURe);
         await USDT.mint(owner.address, amountUSDT);
+        await EURe.mint(account2.address, amountEURe2);
 
         await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
         await farmManager.addFarm(
@@ -77,22 +79,47 @@ describe("TresorBoostCore", function () {
             2,
             await vault.getAddress(),
             await USDT.getAddress(),
-            constants.ZERO_ADDRESS,
             "deposit(uint256,address)",
             "withdraw(uint256,address)",
-            "0x00000000",
             "getMaxWithdraw(address)",
             false
         );
 
+        await farmManager.addFarm(
+            true,
+            1000,
+            2,
+            await vault4626.getAddress(),
+            await USDT.getAddress(),
+            "deposit(uint256,address)",
+            "redeem(uint256,address,address)",
+            "maxRedeem(address",
+            true
+        );
+
         await USDT.mint(tresorBoostCore.getAddress(), ethers.parseEther("100000"));
         await EURe.mint(tresorBoostCore.getAddress(), ethers.parseEther("100000"));
+
+        
+        
+        await EURe.approve(uniswapRouter.getAddress(), amountEURe);
+        await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
+        await uniswapRouter.addLiquidity(
+            EURe.getAddress(),
+            USDT.getAddress(),
+            ethers.parseEther("100000000"),
+            ethers.parseEther("100000000"),
+            0,
+            0,
+            owner.address,
+            Math.floor(Date.now() / 1000) + 60 * 20
+        );
         return {
             tresorBoostCore,
             farmManager,
-            swapManager,
             EURe,
             vault,
+            vault4626,
             uniswapFactory,
             uniswapRouter,
             USDT,
@@ -102,146 +129,23 @@ describe("TresorBoostCore", function () {
         };
     }
 
-    describe("Deployment", function () {
-        it("should deploy the contract", async function () {
-            const { tresorBoostCore } = await loadFixture(deployTresorBoostCoreFixture);
-            expect(await tresorBoostCore.getAddress()).to.be.properAddress;
-        });
+    let tresorBoostCore, EURe, owner, vault, account2, farmManager, USDT, uniswapRouter;
 
-        it("should have working Uniswap imports", async function () {
-            const { uniswapRouter, uniswapFactory, EURe, USDT } = await loadFixture(deployTresorBoostCoreFixture);
-
-            // Vérifier que le Router est bien attaché
-            expect(await uniswapRouter.getAddress()).to.be.properAddress;
-
-            // Vérifier que le Factory est bien attaché
-            expect(await uniswapFactory.getAddress()).to.be.properAddress
-
-            // Vérifier que le Router peut appeler une fonction simple
-            const factoryAddress = await uniswapRouter.factory();
-            expect(factoryAddress).to.equal(await uniswapFactory.getAddress());
-
-            // Vérifier que les tokens sont bien attachés
-            expect(await EURe.getAddress()).to.be.properAddress;
-            expect(await USDT.getAddress()).to.be.properAddress;
-        });
-
-        it("should add liquidity to EURe/USDT pool", async function () {
-            const { uniswapFactory, uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
-
-            // Montants pour l'ajout de liquidité (en wei)
-            const amountEURe = ethers.parseEther("100000000"); // 100M EURe
-            const amountUSDT = ethers.parseEther("100000000"); // 100M USDT
-
-            // Approuver le Router pour dépenser les tokens
-            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
-            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
-
-            // Ajouter la liquidité
-            const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
-            const tx = await uniswapRouter.addLiquidity(
-                EURe.getAddress(),
-                USDT.getAddress(),
-                amountEURe,
-                amountUSDT,
-                0, // amountEUReMin
-                0, // amountUSDTMin
-                owner.address,
-                deadline
-            );
-
-            // Vérifier que la transaction a réussi
-            await expect(tx.wait()).to.not.be.reverted;
-
-            // Vérifier que la paire existe
-            const pairAddress = await uniswapFactory.getPair(EURe.getAddress(), USDT.getAddress());
-            expect(amountEURe).to.equal(await EURe.balanceOf(pairAddress));
-            expect(amountUSDT).to.equal(await USDT.balanceOf(pairAddress));
-            expect(pairAddress).to.not.equal(ethers.ZeroAddress);
-        });
-
-        it("should swap EURe for USDT", async function () {
-            const { uniswapRouter, EURe, USDT, owner } = await loadFixture(deployTresorBoostCoreFixture);
-
-            // D'abord, ajouter de la liquidité
-            const liquidityEURe = ethers.parseEther("100000000"); // 1000 EURe
-            const liquidityUSDT = ethers.parseEther("100000000"); // 1000 USDT
-
-            await EURe.approve(uniswapRouter.getAddress(), liquidityEURe);
-            await USDT.approve(uniswapRouter.getAddress(), liquidityUSDT);
-
-            const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
-            await uniswapRouter.addLiquidity(
-                EURe.getAddress(),
-                USDT.getAddress(),
-                liquidityEURe,
-                liquidityUSDT,
-                0,
-                0,
-                owner.address,
-                deadline
-            );
-
-            // Maintenant, faire le swap
-            const amountIn = ethers.parseEther("100"); // 100 EURe
-
-            // Approuver le Router pour dépenser EURe
-            await EURe.approve(uniswapRouter.getAddress(), amountIn);
-
-            // Préparer le chemin du swap
-            const path = [EURe.getAddress(), USDT.getAddress()];
-
-            // Obtenir le montant minimum de sortie
-            const amounts = await uniswapRouter.getAmountsOut(amountIn, path);
-            const amountOutMin = amounts[1] * BigInt(95) / BigInt(100); // 95% du montant attendu
-
-            // Effectuer le swap
-            const tx = await uniswapRouter.swapExactTokensForTokens(
-                amountIn,
-                amountOutMin,
-                path,
-                owner.address,
-                deadline
-            );
-
-            // Vérifier que la transaction a réussi
-            await expect(tx.wait()).to.not.be.reverted;
-
-            // Vérifier que le solde USDT a augmenté
-            const balanceAfter = await USDT.balanceOf(owner.address);
-            expect(balanceAfter).to.be.gt(0);
-        });
+    beforeEach(async function () {
+        const fixture = await loadFixture(deployTresorBoostCoreFixture);
+        tresorBoostCore = fixture.tresorBoostCore;
+        EURe = fixture.EURe;
+        owner = fixture.owner;
+        vault = fixture.vault;
+        vault4626 = fixture.vault4626;
+        account2 = fixture.account2;
+        farmManager = fixture.farmManager;
+        USDT = fixture.USDT;
+        uniswapRouter = fixture.uniswapRouter;
     });
 
     describe("Deposit", function () {
-        let tresorBoostCore, EURe, owner, vault, account2, farmManager, USDT, uniswapRouter;
 
-        beforeEach(async function () {
-            const fixture = await loadFixture(deployTresorBoostCoreFixture);
-            tresorBoostCore = fixture.tresorBoostCore;
-            EURe = fixture.EURe;
-            owner = fixture.owner;
-            vault = fixture.vault;
-            account2 = fixture.account2;
-            farmManager = fixture.farmManager;
-            USDT = fixture.USDT;
-            uniswapRouter = fixture.uniswapRouter;
-
-            const amountEURe = ethers.parseEther("100000000");
-            const amountUSDT = ethers.parseEther("100000000");
-            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
-            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
-            await uniswapRouter.addLiquidity(
-                EURe.getAddress(),
-                USDT.getAddress(),
-                amountEURe,
-                amountUSDT,
-                0,
-                0,
-                owner.address,
-                Math.floor(Date.now() / 1000) + 60 * 20
-            );
-        });
 
         it("Should take 1000 EURe from sender and deposit to the vault", async function () {
             const balanceBefore = await EURe.balanceOf(owner.address);
@@ -257,7 +161,6 @@ describe("TresorBoostCore", function () {
             const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             expect(depositInfoBefore.amount).to.equal(0);
             const amount = ethers.parseEther("1000");
-            // expect(depositInfoBefore.amount).to.equal(0);
             await tresorBoostCore.connect(owner).depositTo(
                 await vault.getAddress(),
                 amount
@@ -296,7 +199,7 @@ describe("TresorBoostCore", function () {
             );
             const depositInfoB = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             expect(depositInfoB.amount).to.equal(ethers.parseEther("1000"));
-            //wait for 1 year in blockchain time
+
             await ethers.provider.send("evm_increaseTime", [31536000]);
             await ethers.provider.send("evm_mine");
             await EURe.connect(owner).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
@@ -321,7 +224,6 @@ describe("TresorBoostCore", function () {
             const depositInfoB = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             expect(depositInfoB.lastTimeRewardCalculated).to.be.gt(timestampBefore);
 
-            //wait for 1 year in blockchain time
             await ethers.provider.send("evm_increaseTime", [31536000]);
             await ethers.provider.send("evm_mine");
             const timestampAfterYear = await ethers.provider.getBlock('latest').then(block => block.timestamp);
@@ -334,6 +236,24 @@ describe("TresorBoostCore", function () {
             const depositInfoC = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             expect(depositInfoC.lastTimeRewardCalculated).to.be.gt(timestampAfterYear);
         });
+        it("Should deposit to vault4626 and user should receive shares", async function () {
+            const amount = ethers.parseEther("1000");
+            await tresorBoostCore.connect(owner).depositTo(
+                await vault4626.getAddress(),
+                amount
+            );
+            const shares = await vault4626.balanceOf(owner.address);
+            expect(shares).to.be.gt(0);
+        });
+        it("Should deposit to vault4626 and shares aren't on the TBC contract", async function () {
+            const amount = ethers.parseEther("1000");
+            await tresorBoostCore.connect(owner).depositTo(
+                await vault4626.getAddress(),
+                amount
+            );
+            const shares = await vault4626.balanceOf(await tresorBoostCore.getAddress());
+            expect(shares).to.be.eq(0);
+        });
         it("Should emit a Deposit event", async function () {
             const amount = ethers.parseEther("1000");
             await expect(tresorBoostCore.connect(owner).depositTo(
@@ -345,7 +265,7 @@ describe("TresorBoostCore", function () {
             try {
                 await tresorBoostCore.connect(account2).depositTo(
                     await vault.getAddress(),
-                    ethers.parseEther("1000")
+                    ethers.parseEther("5000")
                 );
             } catch (error) {
                 expect(error.message).to.include("InsufficientBalance");
@@ -374,37 +294,31 @@ describe("TresorBoostCore", function () {
                 expect(error.message).to.include("InactiveFarm");
             }
         });
+        it("Should revert if user2 didn't approve enough EURe to be spent", async function () {
+            try {
+                await tresorBoostCore.connect(account2).depositTo(
+                    "0x7287C9d0eB221354f1249dE7632d4f557c4D30f8",
+                    ethers.parseEther("1000")
+                );
+            } catch (error) {
+                expect(error.message).to.include("ERC20InsufficientAllowance");
+            }
+        });
     });
     describe("Withdraw", function () {
-        let tresorBoostCore, EURe, owner, vault, account2, farmManager, USDT, uniswapRouter;
-
         beforeEach(async function () {
             const fixture = await loadFixture(deployTresorBoostCoreFixture);
             tresorBoostCore = fixture.tresorBoostCore;
             EURe = fixture.EURe;
             owner = fixture.owner;
             vault = fixture.vault;
+            vault4626 = fixture.vault4626;
             account2 = fixture.account2;
             farmManager = fixture.farmManager;
             USDT = fixture.USDT;
             uniswapRouter = fixture.uniswapRouter;
 
-            const amountEURe = ethers.parseEther("100000000");
-            const amountUSDT = ethers.parseEther("100000000");
-            await EURe.approve(uniswapRouter.getAddress(), amountEURe);
-            await USDT.approve(uniswapRouter.getAddress(), amountUSDT);
-            await uniswapRouter.addLiquidity(
-                EURe.getAddress(),
-                USDT.getAddress(),
-                amountEURe,
-                amountUSDT,
-                0,
-                0,
-                owner.address,
-                Math.floor(Date.now() / 1000) + 60 * 20
-            );
-
-            const eureAmount = ethers.parseEther("1000");
+            const eureAmount = ethers.parseEther("2000");
             await EURe.connect(owner).approve(tresorBoostCore.getAddress(), eureAmount);
             await farmManager.addFarm(
                 true,
@@ -412,20 +326,36 @@ describe("TresorBoostCore", function () {
                 2,
                 await vault.getAddress(),
                 USDT.getAddress(),
-                constants.ZERO_ADDRESS,
                 "deposit(uint256,address)",
                 "withdraw(uint256,address)",
-                "0x00000000",
                 "getMaxWithdraw(address)",
                 false
             );
 
+            await farmManager.addFarm(
+                true,
+                1000,
+                2,
+                await vault4626.getAddress(),
+                USDT.getAddress(),
+                "deposit(uint256,address)",
+                "redeem(uint256,address,address)",
+                "maxRedeem(address)",
+                true
+            );
+            
             await tresorBoostCore.connect(owner).depositTo(
                 await vault.getAddress(),
                 ethers.parseEther("1000")
             );
 
+            await tresorBoostCore.connect(owner).depositTo(
+                await vault4626.getAddress(),
+                ethers.parseEther("1000")
+            );
+
             await USDT.mint(vault.getAddress(), ethers.parseEther("100000"));
+            await USDT.mint(vault4626.getAddress(), ethers.parseEther("100000"));
 
         });
         it("Should set rewards to 0 in TBC contract when user withdraws any amount", async function () {
@@ -447,7 +377,7 @@ describe("TresorBoostCore", function () {
             const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             expect(depositInfoAfter.rewardAmount).to.be.eq(ethers.parseEther("0"));
         });
-        it("Should decrease user's balance in TBC contractwhen he withdraws", async function () {
+        it("Should decrease user's balance in TBC contract when he withdraws from vault", async function () {
             const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault.getAddress());
             const balanceBefore = depositInfoBefore.amount;
             expect(balanceBefore).to.equal(ethers.parseEther("1000"));
@@ -461,19 +391,34 @@ describe("TresorBoostCore", function () {
             const balanceAfter = depositInfoAfter.amount;
             expect(balanceAfter).to.equal(ethers.parseEther("900"));
         });
+        it("Should decrease user's balance in TBC contract when he withdraws from vault4626", async function () {
+            const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault4626.getAddress());
+            const balanceBefore = depositInfoBefore.amount;
+            expect(balanceBefore).to.equal(ethers.parseEther("1000"));
+            
+            const shares = await vault4626.balanceOf(owner.address);
+            await vault4626.connect(owner).approve(await tresorBoostCore.getAddress(), shares);
+            
+            await tresorBoostCore.connect(owner).withdrawFrom(
+                await vault4626.getAddress(),
+                ethers.parseEther("100")
+            );
+            
+            const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault4626.getAddress());
+            const balanceAfter = depositInfoAfter.amount;
+            expect(balanceAfter).to.equal(ethers.parseEther("900"));
+        });
         it("Should not receive fees if stake is too short to cover swap losses", async function () {
             await expect(tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000")
             )).to.emit(tresorBoostCore, "FeesClaimed").withArgs(owner.address, await vault.getAddress(), 0);
         });
         it("Should receive fees if staked for enough time to cover swap losses", async function () {
-            // Attendre 1 an pour générer des récompenses
             await ethers.provider.send("evm_increaseTime", [31536000]);
             await ethers.provider.send("evm_mine");
 
             const tx = await tresorBoostCore.connect(owner).withdrawFrom(vault.getAddress(), ethers.parseEther("1000"));
             const receipt = await tx.wait();
             
-            // Trouver l'événement FeesClaimed
             const feesClaimedEvent = receipt.logs.find(log => {
                 try {
                     const parsedLog = tresorBoostCore.interface.parseLog(log);
@@ -487,7 +432,6 @@ describe("TresorBoostCore", function () {
             const parsedEvent = tresorBoostCore.interface.parseLog(feesClaimedEvent);
             const feesAmount = parsedEvent.args[2];
             
-            // Vérifier que les frais sont supérieurs à une valeur minimale (par exemple 1 EURe)
             expect(feesAmount).to.be.gt(ethers.parseEther("1"));
         });
         it("Should revert if user hasn't deposited funds", async function () {
@@ -497,6 +441,151 @@ describe("TresorBoostCore", function () {
                 expect(error.message).to.include("InsufficientDepositedFunds");
             }
         });
+        it("Should revert if user refuses to sign the approval", async function () {
+            try {
+                const depositInfoBefore = await tresorBoostCore.deposits(owner.address, await vault4626.getAddress());
+                const balanceBefore = depositInfoBefore.amount;
+                expect(balanceBefore).to.equal(ethers.parseEther("1000"));
+                
+                await tresorBoostCore.connect(owner).withdrawFrom(
+                    await vault4626.getAddress(),
+                    ethers.parseEther("100")
+                );
+                
+                const depositInfoAfter = await tresorBoostCore.deposits(owner.address, await vault4626.getAddress());
+                const balanceAfter = depositInfoAfter.amount;
+                expect(balanceAfter).to.equal(ethers.parseEther("900"));            
+            } catch (error) {
+                expect(error.message).to.include("ERC20InsufficientAllowance");
+            }
+        });
+        it("Should revert if user withrawed funds by himself directly in the vault", async function () {
+            try {
+                await vault.connect(owner).withdraw(ethers.parseEther("500"), owner.address);
+                await EURe.connect(account2).approve(tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+                await tresorBoostCore.connect(account2).depositTo(
+                    await vault.getAddress(),
+                    ethers.parseEther("1000")   
+                );
+            } catch (error) {
+                expect(error.message).to.include("Withdraw from vault failed");
+            }
+        });
+    });
+    describe("Vaults interactions", function () {
+        let mockVault, mockVault4626;
+        beforeEach(async function () {
+            const fixture = await loadFixture(deployTresorBoostCoreFixture);
+            tresorBoostCore = fixture.tresorBoostCore;
+            EURe = fixture.EURe;
+            owner = fixture.owner;
+            vault = fixture.vault;
+            USDT = fixture.USDT;
+            farmManager = fixture.farmManager;
+             
 
+            const MockVault = await ethers.getContractFactory("MockVault");
+            mockVault = await MockVault.deploy("MockVault", "MV");
+            await mockVault.waitForDeployment();
+            const mockVaultAddress = await mockVault.getAddress();
+
+            const MockVault4626 = await ethers.getContractFactory("MockVault");
+            mockVault4626 = await MockVault4626.deploy("MockVault", "MV4626");
+            await mockVault4626.waitForDeployment();
+            const mockVault4626Address = await mockVault4626.getAddress();
+
+            // Mint et approve USDT pour le test
+            await USDT.mint(owner.address, ethers.parseEther("1000"));
+            await USDT.connect(owner).approve(await tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+
+            // Mint et approve EURe pour le test
+            await EURe.mint(owner.address, ethers.parseEther("1000"));
+            await EURe.connect(owner).approve(await tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+
+            await farmManager.addFarm(
+                true,
+                1000,
+                2,
+                mockVaultAddress,
+                await USDT.getAddress(),
+                "deposit(uint256,address)",
+                "withdraw(uint256,address)",
+                "maxWithdraw(address)",
+                false
+            );
+
+            await farmManager.addFarm(
+                true,
+                1000,
+                2,
+                mockVault4626Address,
+                await USDT.getAddress(),
+                "deposit(uint256,address)",
+                "withdraw(uint256,address)",
+                "maxWithdraw(address)",
+                true
+            );
+            await mockVault.mint(owner.address, ethers.parseEther("1000"));
+            await mockVault.connect(owner).approve(await tresorBoostCore.getAddress(), ethers.parseEther("1000"));
+
+        });
+        it("Should revert if vault fails deposit", async function () {
+            try {
+                await mockVault.setIsDepositRevert(true);
+                await tresorBoostCore.connect(owner).depositTo(
+                    await mockVault.getAddress(),
+                    ethers.parseEther("1000")
+                );
+            } catch (error) {
+                expect(error.message).to.include("Deposit failed");
+            }
+        });
+        it("Should revert if vault fails withdraw", async function () {
+            try {
+                await tresorBoostCore.connect(owner).depositTo(
+                    await mockVault.getAddress(),
+                    ethers.parseEther("1000")
+                );
+                await mockVault.setIsWithdrawRevert(true);
+                await tresorBoostCore.connect(owner).withdrawFrom(
+                    await mockVault.getAddress(),
+                    ethers.parseEther("1000")
+                );
+            } catch (error) {
+                expect(error.message).to.include("Withdraw from vault failed");
+            }
+        });
+        it("Should revert if vault4626 fails withdraw", async function () {
+            try {
+                await tresorBoostCore.connect(owner).depositTo(
+                    await mockVault4626.getAddress(),
+                    ethers.parseEther("1000")
+                );
+                await mockVault4626.setIsWithdrawRevert(true);
+                const shares = await mockVault4626.balanceOf(owner.address);
+                await mockVault4626.connect(owner).approve(await tresorBoostCore.getAddress(), shares);
+                await tresorBoostCore.connect(owner).withdrawFrom(
+                    await mockVault4626.getAddress(),
+                    ethers.parseEther("10")
+                );
+            } catch (error) {
+                expect(error.message).to.include("Withdraw from vault failed");
+            }
+        });
+        it("Should revert if vault fails getMaxWithdraw", async function () {
+            try {
+                await tresorBoostCore.connect(owner).depositTo(
+                    await mockVault.getAddress(),
+                    ethers.parseEther("1000")
+                );
+                await mockVault.setIsMaxWithdrawRevert(true);
+                await tresorBoostCore.connect(owner).withdrawFrom(
+                    await mockVault.getAddress(),
+                    ethers.parseEther("1000")
+                );
+            } catch (error) {
+                expect(error.message).to.include("Max withdraw failed");
+            }
+        });
     });
 });

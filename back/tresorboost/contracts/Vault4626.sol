@@ -13,25 +13,23 @@ contract Vault4626 is ERC4626 {
         lastUpdateBlock = block.number;
     }
 
-    // Simule une croissance des assets dans le vault
     function accrueYield() public {
         uint256 blocksPassed = block.number - lastUpdateBlock;
         if (blocksPassed > 0) {
             uint256 newAssets = (totalAssets() * yieldRate / 1e18) * blocksPassed;
-            _mint(address(this), newAssets); // Ajoute les intérêts directement au vault
+            _mint(address(this), newAssets); 
             lastUpdateBlock = block.number;
         }
     }
 
-    // Override deposit pour ajouter la simulation de yield
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         accrueYield();
         return super.deposit(assets, receiver);
     }
 
-    // Override withdraw pour simuler la croissance des assets
-    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
+
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         accrueYield();
-        return super.withdraw(assets, receiver, owner);
+        return super.redeem(shares, receiver, owner);
     }
 }

@@ -1,12 +1,11 @@
 export interface FarmData {    
+    isActive: boolean;
+    rewardRate: number;
+    farmType: number;
     farmAddress: string;
     depositToken: string;
-    rewardToken: string;
     depositSelector: string;
     withdrawSelector: string;
-    claimSelector: string;
     maxWithdrawSelector: string;
-    farmType: number;
-    rewardRate: number;
-    isActive: boolean;
+    isVault4626: boolean;
 }

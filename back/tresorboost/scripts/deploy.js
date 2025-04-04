@@ -19,12 +19,12 @@ const main = async () => {
     await addLiquidityEUReUSDT(aEURe, aUSDT);
     console.log("------------------------------DEPLOY VAULT 9%-------------------------------");
     const vaultUSDT75 = await deployVault(aUSDT, 900);
-    console.log("------------------------------DEPLOY CLAIMABLE VAULT 10%------------------------------");
-    const vaultUSDT10 = await deployClaimableVault(aUSDT, 1000);
+    console.log("------------------------------DEPLOY VAULT4626------------------------------");
+    const vaultUSDT10 = await deployVault4626(aUSDT);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
     const vaultUSDT15 = await deployVault(aUSDT, 1500);
     console.log("------------------------------CREATE FARMS------------------------------");
-    await createFarms(farmManager, await aUSDT.getAddress(), await vaultUSDT75.getAddress(), await vaultUSDT10.getAddress(), await vaultUSDT15.getAddress());
+    await createFarms(farmManager, await aUSDT.getAddress(), await vaultUSDT75.getAddress(), vaultUSDT10, await vaultUSDT15.getAddress());
     console.log("------------------------------END OF DEPLOYMENT------------------------------");
 }
 
@@ -53,15 +53,6 @@ async function deployVault(token, apr) {
     console.log("✅ Vault deployed to:", await vault.getAddress());
     await token.mint(await vault.getAddress(), ethers.parseEther("1000000000"));
     return vault;
-}
-
-async function deployClaimableVault(token, apr) {
-    const ClaimableVault = await ethers.getContractFactory("ClaimableVault");
-    const claimableVault = await ClaimableVault.deploy(token, apr);
-    await claimableVault.waitForDeployment();
-    console.log("✅ ClaimableVault deployed to:", await claimableVault.getAddress());
-    await token.mint(await claimableVault.getAddress(), ethers.parseEther("1000000000"));
-    return claimableVault;
 }
 
 async function deployVault4626(token) {
@@ -130,10 +121,10 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
     console.log("✅ Liquidité ajoutée avec succès");
 }
 
-async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDT10, vaultUSDT15) {
+async function createFarms(farmManager, usdtAddress, vaultUSDT75Address, vaultUSDT10, vaultUSDT15Address) {
     const farms = [
-        { vault: vaultUSDT75, farmType: 0, rate: 400 },
-        { vault: vaultUSDT15, farmType: 2, rate: 800 },
+        { vault: vaultUSDT75Address, farmType: 0, rate: 400 },
+        { vault: vaultUSDT15Address, farmType: 2, rate: 800 },
     ];
 
     for (const farm of farms) {
@@ -143,10 +134,8 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDT10, v
             farm.farmType,
             farm.vault,
             usdtAddress,
-            ZeroAddress,
             "deposit(uint256,address)",
             "withdraw(uint256,address)",
-            "0x00000000",
             "getMaxWithdraw(address)",
             false
         );
@@ -157,14 +146,12 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75, vaultUSDT10, v
         true,
         1000,
         1,
-        vaultUSDT10,
+        await vaultUSDT10.getAddress(),
         usdtAddress,
-        ZeroAddress,
-        "deposit(uint256,address,uint256)",
-        "withdraw(uint256,address)",
-        "claimRewards(address)",
-        "getMaxWithdraw(address)",
-        false
+        "deposit(uint256,address)",
+        "redeem(uint256,address,address)",
+        "maxRedeem(address)",
+        true
     )
     console.log("✅ Farm ", 1, " added to:", await farmManager.getAddress());
 }

@@ -18,12 +18,11 @@ const CreateFarm = () => {
     const [farmType, setFarmType] = useState<FarmTypeEnum>(FarmTypeEnum.PRUDENT);
     const [farmAddress, setFarmAddress] = useState<string>('0xd69bc314bdaa329eb18f36e4897d96a3a48c3eef');
     const [depositTokenAddress, setDepositTokenAddress] = useState<string>('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
-    const [rewardTokenAddress, setRewardTokenAddress] = useState<string>('0x0000000000000000000000000000000000000000');
-    const [depositFunction, setDepositFunction] = useState<string>('deposit(uint256)');
-    const [withdrawFunction, setWithdrawFunction] = useState<string>('withdraw(uint256)');
-    const [claimFunction, setClaimFunction] = useState<string>('getRewards(address)');
+    const [depositFunction, setDepositFunction] = useState<string>('deposit(uint256,address)');
+    const [withdrawFunction, setWithdrawFunction] = useState<string>('withdraw(uint256,address)');
     const [maxWithdrawFunction, setMaxWithdrawFunction] = useState<string>('getMaxWithdraw(address)');
     const [isActive, setIsActive] = useState<boolean>(true);
+    const [isVault4626, setIsVault4626] = useState<boolean>(false);
     const [rewardRate, setRewardRate] = useState<number>(400);
 
     const handlerAddFarm = async() => {
@@ -38,11 +37,10 @@ const CreateFarm = () => {
                     farmType,       
                     farmAddress,    
                     depositTokenAddress,  
-                    rewardTokenAddress,   
                     depositFunction,      
                     withdrawFunction,     
-                    claimFunction,
-                    maxWithdrawFunction
+                    maxWithdrawFunction,
+                    isVault4626
                 ],
             });
 
@@ -54,11 +52,11 @@ const CreateFarm = () => {
             setRewardRate(0);
             setFarmAddress('');
             setDepositTokenAddress('');
-            setRewardTokenAddress('');
             setDepositFunction('');
             setWithdrawFunction('');
-            setClaimFunction('');
+            setMaxWithdrawFunction('');
             setIsActive(true);
+            setIsVault4626(false);
             setFarmType(FarmTypeEnum.PRUDENT);
 
         } catch (error) {
@@ -130,6 +128,24 @@ const CreateFarm = () => {
                                     </div>
                                 </RadioGroup>
                             </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">ERC4626</Label>
+                                <RadioGroup 
+                                    defaultValue="false" 
+                                    onValueChange={(value) => setIsVault4626(value === "true")}
+                                    className="flex gap-4"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="true" id="v1" />
+                                        <Label htmlFor="v1" className="text-sm">Oui</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="false" id="v2" />
+                                        <Label htmlFor="v2" className="text-sm">Non</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -152,16 +168,6 @@ const CreateFarm = () => {
                                     placeholder="0x..."
                                 />
                             </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Adresse du token de récompense</Label>
-                                <Input 
-                                    value={rewardTokenAddress} 
-                                    onChange={(e) => setRewardTokenAddress(e.target.value)}
-                                    className="w-full font-mono text-sm"
-                                    placeholder="0x..."
-                                />
-                            </div>
                         </div>
                     </div>
 
@@ -174,7 +180,7 @@ const CreateFarm = () => {
                                     value={depositFunction} 
                                     onChange={(e) => setDepositFunction(e.target.value)}
                                     className="w-full font-mono text-sm"
-                                    placeholder="deposit(uint256)"
+                                    placeholder="deposit(uint256,address)"
                                 />
                             </div>
 
@@ -184,17 +190,7 @@ const CreateFarm = () => {
                                     value={withdrawFunction} 
                                     onChange={(e) => setWithdrawFunction(e.target.value)}
                                     className="w-full font-mono text-sm"
-                                    placeholder="withdraw(uint256)"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Fonction de réclamation</Label>
-                                <Input 
-                                    value={claimFunction} 
-                                    onChange={(e) => setClaimFunction(e.target.value)}
-                                    className="w-full font-mono text-sm"
-                                    placeholder="getRewards(address)"
+                                    placeholder="withdraw(uint256,address)"
                                 />
                             </div>
 
