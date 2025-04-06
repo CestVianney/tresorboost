@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/CestVianney/tresorboost/compare/v2.0.2...v2.0.3) (2025-04-06)
+
+
+### Bug Fixes
+
+* chain ([0001b46](https://github.com/CestVianney/tresorboost/commit/0001b46d6b3d061c652737c365ed206977ff772f))
+
 ## [2.0.2](https://github.com/CestVianney/tresorboost/compare/v2.0.1...v2.0.2) (2025-04-06)
 
 
