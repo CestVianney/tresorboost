@@ -28,6 +28,17 @@ export const TBC_ABI = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "DepositTooSoon",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "inactiveFarm",
         "type": "address"
@@ -377,4 +388,4 @@ export const TBC_ABI = [
     "type": "function"
   }
 ]
-export const TBC_ADDRESS = "0x76Dc277242a8b737E82bcC25ED76866E609c2448"
+export const TBC_ADDRESS = "0x7Dc1Cb2502cD29CE716f84DBe67110e90075B6b9"

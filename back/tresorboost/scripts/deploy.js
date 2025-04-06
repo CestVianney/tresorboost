@@ -22,7 +22,7 @@ const main = async () => {
     console.log("------------------------------DEPLOY VAULT4626------------------------------");
     const vaultUSDT10 = await deployVault4626(aUSDT);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
-    const vaultUSDT15 = await deployVault(aUSDT, 1500);
+    const vaultUSDT15 = await deployVault(aUSDT, 50000);
     console.log("------------------------------CREATE FARMS------------------------------");
     await createFarms(farmManager, await aUSDT.getAddress(), await vaultUSDT75.getAddress(), vaultUSDT10, await vaultUSDT15.getAddress());
     console.log("------------------------------END OF DEPLOYMENT------------------------------");
@@ -57,11 +57,21 @@ async function deployVault(token, apr) {
 
 async function deployVault4626(token) {
     const Vault4626 = await ethers.getContractFactory("Vault4626");
-    const yieldRate = 10**13; //0.001% par block, ~=5;6%/jour
+    const yieldRate = 1000; 
     const vault4626 = await Vault4626.deploy(token, yieldRate);
     await vault4626.waitForDeployment();
     console.log("✅ Vault4626 deployed to:", await vault4626.getAddress());
-    await token.mint(await vault4626.getAddress(), ethers.parseEther("1000000000"));
+    
+    // Mint des tokens au vault
+    const initialAmount = ethers.parseEther("1000000");
+    await token.mint(await vault4626.getAddress(), initialAmount);
+    console.log("Token minted to vault4626:", await token.balanceOf(await vault4626.getAddress()));
+    
+    // Mint des shares initiales pour définir le ratio
+    await token.approve(await vault4626.getAddress(), initialAmount);
+    await vault4626.deposit(initialAmount, await vault4626.getAddress());
+    console.log("Initial shares minted with deposit of:", initialAmount.toString());
+    
     return vault4626;
 }
 
@@ -144,7 +154,7 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75Address, vaultUS
 
     await farmManager.addFarm(
         true,
-        1000,
+        600,
         1,
         await vaultUSDT10.getAddress(),
         usdtAddress,

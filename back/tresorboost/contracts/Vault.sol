@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import "hardhat/console.sol";
 contract Vault {
     IERC20 public immutable token;
     mapping(address => uint256) public balances;
@@ -69,6 +69,7 @@ contract Vault {
     }
 
     function getMaxWithdraw(address user) external view returns (uint256) {
+        console.log(user);        
         return balances[user];
     }
 }

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./FarmManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-
+import "hardhat/console.sol";
 contract TresorBoostCore is Ownable {
     struct DepositInfo {
         address pool;
@@ -17,24 +17,18 @@ contract TresorBoostCore is Ownable {
     error InsufficientBalance(uint256 required);
     error InactiveFarm(address inactiveFarm);
     error InsufficientDepositedFunds(uint256 required, uint256 deposited);
+    error DepositTooSoon(uint256 required);
 
     event Deposit(address indexed user, address indexed pool, uint256 amount);
     event Withdraw(address indexed user, address indexed pool, uint256 amount);
-    event RewardsClaimed(
-        address indexed user,
-        address indexed pool,
-        uint256 amount
-    );
-    event FeesClaimed(
-        address indexed user,
-        address indexed pool,
-        uint256 amount
-    );
-    event CoveredSlippage(
-        address indexed user,
-        address indexed pool,
-        uint256 slippage
-    );
+    event RewardsClaimed(address indexed user, address indexed pool, uint256 amount);
+    event FeesClaimed(address indexed user, address indexed pool, uint256 amount);
+    event CoveredSlippage(address indexed user, address indexed pool, uint256 slippage);
+
+    modifier hasDepositedTooSoon(address _user, address _pool) {
+        require(block.timestamp - deposits[_user][_pool].lastTimeRewardCalculated > 1 , DepositTooSoon(60));
+        _;
+    }
 
     mapping(address => mapping(address => DepositInfo)) public deposits;
 
@@ -56,23 +50,12 @@ contract TresorBoostCore is Ownable {
     }
 
     function depositTo(address _toContract, uint256 _amount) public {
-        require(
-            IERC20(eureToken).balanceOf(msg.sender) >= _amount,
-            InsufficientBalance(_amount)
-        );
-        require(
-            IERC20(eureToken).transferFrom(msg.sender, address(this), _amount)
-        );
-        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(
-            _toContract
-        );
+        require(IERC20(eureToken).balanceOf(msg.sender) >= _amount, InsufficientBalance(_amount));
+        require(IERC20(eureToken).transferFrom(msg.sender, address(this), _amount));
+        FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(_toContract);
         require(farmInfo.isActive, InactiveFarm(_toContract));
-
         // Approuver le Router pour dépenser les EURe
-        require(
-            IERC20(eureToken).approve(address(router), _amount),
-            "Approve failed"
-        );
+        require(IERC20(eureToken).approve(address(router), _amount), "Approve failed");
 
         // Préparer le chemin du swap
         address[] memory path = new address[](2);
@@ -100,27 +83,23 @@ contract TresorBoostCore is Ownable {
         );
 
         _manageDeposit(farmInfo, receivedAmount, _toContract);
-
         _updateDepositInfo(msg.sender, _toContract, _amount, 0, false);
 
         emit Deposit(msg.sender, _toContract, _amount);
         emit CoveredSlippage(msg.sender, _toContract, _amount - receivedAmount);
     }
 
-    function withdrawFrom(address _fromContract, uint256 _amount) public {
+    function withdrawFrom(address _fromContract, uint256 _amount) hasDepositedTooSoon(msg.sender, _fromContract) public {
         _updateRewards(_fromContract);
         DepositInfo memory depositInfo = deposits[msg.sender][_fromContract];
-
-        require(
-            depositInfo.amount >= _amount,
-            InsufficientDepositedFunds(_amount, depositInfo.amount)
-        );
+        console.log("depositInfo.amount", depositInfo.amount);
+        require(depositInfo.amount >= _amount, InsufficientDepositedFunds(_amount, depositInfo.amount));
         // Dued amount to return to user
         uint256 totalDuedAmount = _amount + depositInfo.rewardAmount;
         FarmManager.FarmInfo memory farmInfo = farmManager.getFarmInfo(
             _fromContract
         );
-        uint256 realWithdrawAmount = getRealWithdrawAmount(
+        uint256 realWithdrawAmount = _getRealWithdrawAmount(
             farmInfo,
             _amount,
             _fromContract,
@@ -130,6 +109,7 @@ contract TresorBoostCore is Ownable {
         // User deposits in the farms' asset
         uint256 withdrawnAmount;
         if (farmInfo.isVault4626) {
+            console.log("REDEEM FROM VAULT 4626");
             withdrawnAmount = _redeemFromVault4626(
                 farmInfo,
                 realWithdrawAmount,
@@ -143,6 +123,8 @@ contract TresorBoostCore is Ownable {
             );
         }
 
+        console.log("WITHDRAWN AMOUNT", withdrawnAmount /1e18);
+        console.log("TOTAL DUE AMOUNT", totalDuedAmount /1e18);
         uint256 fees = _manageFees(withdrawnAmount, totalDuedAmount);
         // Swap des tokens reçus en EURe
         require(
@@ -173,12 +155,11 @@ contract TresorBoostCore is Ownable {
             address(this),
             block.timestamp + 300
         );
-
         // Use the amount returned by the swap
-        uint256 receivedEure = swapResult[1]; // The amount of EURe received after the swap
-
+        uint256 receivedEure = swapResult[1];
+        console.log("RECEIVED EURE", receivedEure /1e18);
+         // The amount of EURe received after the swap 
         _updateDepositInfo(msg.sender, _fromContract, 0, _amount, true);
-
         require(
             IERC20(eureToken).transfer(msg.sender, totalDuedAmount),
             "Transfer failed"
@@ -187,7 +168,6 @@ contract TresorBoostCore is Ownable {
             IERC20(farmInfo.depositToken).transfer(bankAccount, fees),
             "Transfer failed"
         );
-
         emit Withdraw(msg.sender, _fromContract, _amount);
         emit RewardsClaimed(
             msg.sender,
@@ -207,28 +187,36 @@ contract TresorBoostCore is Ownable {
         uint256 _amount,
         address _toContract
     ) private {
+        address user = msg.sender;
         bytes memory depositData = abi.encodeWithSelector(
             farmInfo.depositSelector,
             _amount,
-            msg.sender
+            user
         );
+        console.log("userAddress", user);
         (bool depositResult, ) = _toContract.call(depositData);
         require(depositResult, "Deposit failed");
     }
 
-    function getRealWithdrawAmount(
+    function _getRealWithdrawAmount(
         FarmManager.FarmInfo memory farmInfo,
         uint256 _amount,
         address _fromContract,
         uint256 _storedAmount
     ) private returns (uint256) {
-        bytes memory maxWithdrawSelector = abi.encodeWithSelector(farmInfo.maxWithdrawSelector, msg.sender);
+        address user = msg.sender;
+        bytes memory maxWithdrawSelector = abi.encodeWithSelector(farmInfo.maxWithdrawSelector, user);
+        
         (bool maxWithdrawResult, bytes memory returnedMaxWithdrawData) = _fromContract.call(maxWithdrawSelector);
         require(maxWithdrawResult, "Max withdraw failed");
         uint256 maxWithdraw = abi.decode(returnedMaxWithdrawData, (uint256));
-        uint256 rate = (_amount * 10000) / _storedAmount;
-
-        return (maxWithdraw * rate) / 10000;
+        
+        // Calculer la proportion de shares à retirer
+        uint256 sharesToWithdraw = (maxWithdraw * _amount) / _storedAmount;
+        console.log("MAX WITHDRAW", maxWithdraw /1e18);
+        console.log("sharesToWithdraw", sharesToWithdraw /1e18);
+        
+        return sharesToWithdraw;
     }
 
     function _redeemFromVault4626(
@@ -236,12 +224,20 @@ contract TresorBoostCore is Ownable {
         uint256 realWithdrawAmount,
         address _fromContract
     ) private returns (uint256) {
-        bytes memory withdrawSelector = abi.encodeWithSelector(farmInfo.withdrawSelector, realWithdrawAmount, msg.sender, this);
+        console.log("realWithdrawAmount", realWithdrawAmount /1e18);
+        bytes memory withdrawSelector = abi.encodeWithSelector(farmInfo.withdrawSelector, realWithdrawAmount, msg.sender, address(this));
         //take reward token back from user
+        console.log("farmInfo.farmAddress", farmInfo.farmAddress);
         require(IERC20(farmInfo.farmAddress).transferFrom(msg.sender, address(this), realWithdrawAmount), "Transfer failed");
         (bool withdrawResult, bytes memory returnedData) = _fromContract.call(withdrawSelector);
         require(withdrawResult, "Withdraw from vault failed");
-        return abi.decode(returnedData, (uint256));
+        console.log("SORTIE DU CALL CONTRACT");
+        //take back the amount received from the vault to the user
+        uint256 amountRedeemed = abi.decode(returnedData, (uint256));
+        console.log("AMOPUNT REEDEMED", amountRedeemed /1e18);
+        require(IERC20(farmInfo.depositToken).transferFrom(msg.sender, address(this),amountRedeemed), "Transfer failed");
+        console.log("RECUPERATION DES BIENS");
+        return amountRedeemed;
     }
 
     function _withdrawFromSimpleVault(FarmManager.FarmInfo memory farmInfo, uint256 realWithdrawAmount, address _fromContract ) private returns (uint256) {
