@@ -1,3 +1,10 @@
+## [2.0.5](https://github.com/CestVianney/tresorboost/compare/v2.0.4...v2.0.5) (2025-04-06)
+
+
+### Bug Fixes
+
+* publicClient ([c9f3805](https://github.com/CestVianney/tresorboost/commit/c9f3805c9e658fabb8139774a507dbed98c858fe))
+
 ## [2.0.4](https://github.com/CestVianney/tresorboost/compare/v2.0.3...v2.0.4) (2025-04-06)
 
 
