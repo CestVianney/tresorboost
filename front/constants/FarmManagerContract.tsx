@@ -117,11 +117,6 @@ export const FARM_MANAGER_ABI = [
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "_rewardToken",
-        "type": "address"
-      },
-      {
         "internalType": "string",
         "name": "_depositFunction",
         "type": "string"
@@ -133,17 +128,12 @@ export const FARM_MANAGER_ABI = [
       },
       {
         "internalType": "string",
-        "name": "_claimFunction",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
         "name": "_maxWithdrawFunction",
         "type": "string"
       },
       {
         "internalType": "bool",
-        "name": "_hasClaimSelector",
+        "name": "_isVault4626",
         "type": "bool"
       }
     ],
@@ -190,11 +180,6 @@ export const FARM_MANAGER_ABI = [
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "rewardToken",
-            "type": "address"
-          },
-          {
             "internalType": "bytes4",
             "name": "depositSelector",
             "type": "bytes4"
@@ -206,17 +191,12 @@ export const FARM_MANAGER_ABI = [
           },
           {
             "internalType": "bytes4",
-            "name": "claimSelector",
-            "type": "bytes4"
-          },
-          {
-            "internalType": "bytes4",
             "name": "maxWithdrawSelector",
             "type": "bytes4"
           },
           {
             "internalType": "bool",
-            "name": "hasClaimSelector",
+            "name": "isVault4626",
             "type": "bool"
           }
         ],
@@ -252,81 +232,6 @@ export const FARM_MANAGER_ABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_farmAddress",
-        "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "isActive",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint16",
-            "name": "rewardRate",
-            "type": "uint16"
-          },
-          {
-            "internalType": "uint8",
-            "name": "farmType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "address",
-            "name": "farmAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "depositToken",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "rewardToken",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes4",
-            "name": "depositSelector",
-            "type": "bytes4"
-          },
-          {
-            "internalType": "bytes4",
-            "name": "withdrawSelector",
-            "type": "bytes4"
-          },
-          {
-            "internalType": "bytes4",
-            "name": "claimSelector",
-            "type": "bytes4"
-          },
-          {
-            "internalType": "bytes4",
-            "name": "maxWithdrawSelector",
-            "type": "bytes4"
-          },
-          {
-            "internalType": "bool",
-            "name": "hasClaimSelector",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct FarmManager.FarmInfo",
-        "name": "_farmInfo",
-        "type": "tuple"
-      }
-    ],
-    "name": "setFarmInfo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
         "name": "newOwner",
         "type": "address"
       }
@@ -337,4 +242,4 @@ export const FARM_MANAGER_ABI = [
     "type": "function"
   }
 ]
-export const FARM_MANAGER_ADDRESS = "0x114fB1B21f87716DF7491A74cfd399ED6D7eeffE"
+export const FARM_MANAGER_ADDRESS = "0x3316435EF1333A323522269524ca2332BA24B34E"

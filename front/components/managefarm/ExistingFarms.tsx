@@ -25,29 +25,27 @@ const ExistingFarms = () => {
     const [selectedFarm, setSelectedFarm] = useState<FarmData | null>(null);
     const [openDialogId, setOpenDialogId] = useState<string | null>(null);
 
+    const [isActive, setIsActive] = useState<boolean>();
+    const [rewardRate, setRewardRate] = useState<number>();
     const [farmType, setFarmType] = useState<FarmTypeEnum>();
     const [farmAddress, setFarmAddress] = useState<string>();
     const [depositTokenAddress, setDepositTokenAddress] = useState<string>();
-    const [rewardTokenAddress, setRewardTokenAddress] = useState<string>();
     const [depositFunction, setDepositFunction] = useState<string>();
     const [withdrawFunction, setWithdrawFunction] = useState<string>();
-    const [claimFunction, setClaimFunction] = useState<string>();
     const [maxWithdrawFunction, setMaxWithdrawFunction] = useState<string>();
-    const [isActive, setIsActive] = useState<boolean>();
-    const [rewardRate, setRewardRate] = useState<number>();
+    const [isVault4626, setIsVault4626] = useState<boolean>();
 
     const handleFarmSelect = (farm: FarmData) => {
         setSelectedFarm(farm);
+        setIsActive(farm.isActive);
         setFarmType(farm.farmType);
+        setRewardRate(farm.rewardRate);
         setFarmAddress(farm.farmAddress);
         setDepositTokenAddress(farm.depositToken);
-        setRewardTokenAddress(farm.rewardToken);
         setDepositFunction(farm.depositSelector);
         setWithdrawFunction(farm.withdrawSelector);
-        setClaimFunction(farm.claimSelector);
         setMaxWithdrawFunction(farm.maxWithdrawSelector);
-        setIsActive(farm.isActive);
-        setRewardRate(farm.rewardRate);
+        setIsVault4626(farm.isVault4626);
     };
 
     const handlerAddFarm = async () => {
@@ -57,16 +55,15 @@ const ExistingFarms = () => {
                 abi: FARM_MANAGER_ABI,
                 functionName: 'addFarm',
                 args: [
-                    isActive,        
-                    rewardRate,      
-                    farmType,       
-                    farmAddress,    
-                    depositTokenAddress,  
-                    rewardTokenAddress,   
-                    depositFunction,      
-                    withdrawFunction,     
-                    claimFunction,
-                    maxWithdrawFunction
+                    isActive,
+                    rewardRate,
+                    farmType,
+                    farmAddress,
+                    depositTokenAddress,
+                    depositFunction,
+                    withdrawFunction,
+                    maxWithdrawFunction,
+                    isVault4626
                 ],
             });
             toast({
@@ -183,11 +180,6 @@ const ExistingFarms = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Adresse du token de récompense</Label>
-                                        <Input defaultValue={farm.rewardToken} onChange={(e) => setRewardTokenAddress(e.target.value)} />
-                                    </div>
-
-                                    <div className="space-y-2">
                                         <Label>Fonction de dépôt</Label>
                                         <Input defaultValue={farm.depositSelector} onChange={(e) => setDepositFunction(e.target.value)} />
                                     </div>
@@ -195,11 +187,6 @@ const ExistingFarms = () => {
                                     <div className="space-y-2">
                                         <Label>Fonction de retrait</Label>
                                         <Input defaultValue={farm.withdrawSelector} onChange={(e) => setWithdrawFunction(e.target.value)} />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Fonction de réclamation</Label>
-                                        <Input defaultValue={farm.claimSelector} onChange={(e) => setClaimFunction(e.target.value)} />
                                     </div>
 
                                     <div className="space-y-2">
@@ -221,6 +208,24 @@ const ExistingFarms = () => {
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="false" id="r2" />
                                                 <Label htmlFor="r2">Inactive</Label>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Vault4626</Label>
+                                        <RadioGroup
+                                            defaultValue={farm.isVault4626.toString()}
+                                            onValueChange={(value) => setIsVault4626(value === "true")}
+                                            className="flex gap-4"
+                                        >
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="true" id="v1" />
+                                                <Label htmlFor="v1">Oui</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="false" id="v2" />
+                                                <Label htmlFor="v2">Non</Label>
                                             </div>
                                         </RadioGroup>
                                     </div>

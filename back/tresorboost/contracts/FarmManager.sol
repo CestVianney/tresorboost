@@ -18,12 +18,10 @@ contract FarmManager is Ownable {
         uint8 farmType;
         address farmAddress;
         address depositToken;
-        address rewardToken;
         bytes4 depositSelector;
         bytes4 withdrawSelector;
-        bytes4 claimSelector;
         bytes4 maxWithdrawSelector;
-        bool hasClaimSelector;
+        bool isVault4626;
     }
 
     mapping(address => FarmInfo) internal farms;
@@ -36,12 +34,10 @@ contract FarmManager is Ownable {
         uint8 _farmType,
         address _farmAddress,
         address _depositToken,
-        address _rewardToken,
         string memory _depositFunction,
         string memory _withdrawFunction,
-        string memory _claimFunction,
         string memory _maxWithdrawFunction,
-        bool _hasClaimSelector
+        bool _isVault4626
     ) public onlyOwner {
         farms[_farmAddress] = FarmInfo({
             isActive: _isActive,
@@ -49,12 +45,10 @@ contract FarmManager is Ownable {
             farmType: _farmType,
             farmAddress: _farmAddress,
             depositToken: _depositToken,
-            rewardToken: _rewardToken,
             depositSelector: bytes4(keccak256(bytes(_depositFunction))),
             withdrawSelector: bytes4(keccak256(bytes(_withdrawFunction))),
-            claimSelector: bytes4(keccak256(bytes(_claimFunction))),
-            hasClaimSelector: _hasClaimSelector,
-            maxWithdrawSelector: bytes4(keccak256(bytes(_maxWithdrawFunction)))
+            maxWithdrawSelector: bytes4(keccak256(bytes(_maxWithdrawFunction))),
+            isVault4626: _isVault4626
         });
 
         emit FarmAdded(_farmAddress);
@@ -64,18 +58,5 @@ contract FarmManager is Ownable {
         address _farmAddress
     ) public view returns (FarmInfo memory) {
         return farms[_farmAddress];
-    }
-
-    function setFarmInfo(
-        address _farmAddress,
-        FarmInfo memory _farmInfo
-    ) public onlyOwner {
-        farms[_farmAddress] = _farmInfo;
-        emit FarmUpdated(
-            _farmAddress,
-            _farmInfo.depositToken,
-            _farmInfo.isActive,
-            _farmInfo.farmType
-        );
     }
 }

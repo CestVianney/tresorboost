@@ -10,6 +10,8 @@ import { formatNumberFromNumber } from '@/utils/utils';
 interface ProfileProps {
     pool: string;
     farmProfileName: string;
+    farmIsVault4626: boolean;
+    farmDepositToken: string;
     claimableRewards: number;
     rewards: number;
     annualRate: string;
@@ -22,7 +24,7 @@ interface ProfileProps {
     onToggleExpand: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, claimableRewards, rewards: depositInFarm, annualRate, monthlyGain, yearlyGain, bgColor = "bg-gray-300", textColor = "text-black", balance, isExpanded, onToggleExpand }) => {
+const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, farmIsVault4626, farmDepositToken, claimableRewards, rewards: depositInFarm, annualRate, monthlyGain, yearlyGain, bgColor = "bg-gray-300", textColor = "text-black", balance, isExpanded, onToggleExpand }) => {
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
     const [depositAmount, setDepositAmount] = useState('');
     const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
@@ -30,15 +32,59 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
 
     const { writeContract } = useWriteContract();
 
-    const handleWithdraw = async (_toPool: string, _amount: number) => {
+    const handleWithdraw = async (_toPool: string, _amount: number, isVault4626: boolean) => {
         try {
-            const amountInWei = parseEther(_amount.toString());
-            const withdrawTx = await writeContract({
+            const amountInWei = parseEther((_amount).toString());
+            const infiniteApproval = parseEther((_amount * 2).toString());
+
+            if (isVault4626) {
+                // Approve des shares du Vault4626
+                await writeContract({
+                    address: _toPool as `0x${string}`,
+                    abi: [
+                        {
+                            inputs: [
+                                { name: "spender", type: "address" },
+                                { name: "amount", type: "uint256" }
+                            ],
+                            name: "approve",
+                            outputs: [{ type: "bool" }],
+                            stateMutability: "nonpayable",
+                            type: "function"
+                        }
+                    ],
+                    functionName: 'approve',
+                    args: [TBC_ADDRESS, amountInWei],
+                });
+
+                // Approbation pour le montant total (dépôt + intérêts potentiels)
+                await writeContract({
+                    address: farmDepositToken as `0x${string}`,
+                    abi: [
+                        {
+                            inputs: [
+                                { name: "spender", type: "address" },
+                                { name: "amount", type: "uint256" }
+                            ],
+                            name: "approve",
+                            outputs: [{ type: "bool" }],
+                            stateMutability: "nonpayable",
+                            type: "function"
+                        }
+                    ],
+                    functionName: 'approve',
+                    args: [TBC_ADDRESS, infiniteApproval],
+                });
+            }
+
+            // Ensuite, on effectue le withdraw
+            await writeContract({
                 address: TBC_ADDRESS,
                 abi: TBC_ABI,
                 functionName: 'withdrawFrom',
                 args: [_toPool, amountInWei],
             });
+
             setIsWithdrawModalOpen(false);
             setWithdrawAmount('');
         } catch (error: any) {
@@ -76,16 +122,16 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
     return (
         <>
             <div className={`w-64 rounded-xl shadow-lg ${bgColor} ${textColor} overflow-hidden transition-all duration-300 relative`}>
-                <div 
+                <div
                     className="p-3 cursor-pointer hover:bg-white/10 transition-colors duration-200"
                     onClick={onToggleExpand}
                 >
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold tracking-wide">{`Profil ${profileName.toUpperCase()}`}</h2>
-                        <svg 
+                        <svg
                             className={`w-4 h-4 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-                            fill="none" 
-                            stroke="currentColor" 
+                            fill="none"
+                            stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -104,7 +150,7 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                         </div>
                     )}
                 </div>
-                
+
                 <div className={`transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[400px] opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
                     <div className={`p-3 space-y-4 transition-all duration-500 ease-in-out ${isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
                         <div className="space-y-1">
@@ -147,11 +193,11 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
             </div>
 
             {isDepositModalOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
                     onClick={() => setIsDepositModalOpen(false)}
                 >
-                    <div 
+                    <div
                         className="bg-white p-8 rounded-xl shadow-xl w-96 relative"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -181,7 +227,8 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                                 value={depositAmount}
                                 onChange={(e) => setDepositAmount(e.target.value)}
                                 placeholder="Montant en EURe"
-                                className="border p-3 rounded-lg mb-4 w-full focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                className={`border p-3 rounded-lg mb-4 w-full focus:outline-none focus:ring-2 focus:ring-yellow-500 ${Number(depositAmount) > Number(formatEther(balance as bigint)) ? 'border-red-500' : ''
+                                    }`}
                             />
                         </div>
                         <div className="flex justify-end gap-3">
@@ -193,7 +240,11 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                             </button>
                             <button
                                 onClick={() => handleDeposit(pool, Number(depositAmount))}
-                                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                                disabled={Number(depositAmount) > Number(formatEther(balance as bigint)) || Number(depositAmount) <= 0}
+                                className={`px-4 py-2 text-white rounded-lg transition-colors ${Number(depositAmount) > Number(formatEther(balance as bigint)) || Number(depositAmount) <= 0
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-yellow-500 hover:bg-yellow-600'
+                                    }`}
                             >
                                 Confirmer
                             </button>
@@ -202,11 +253,11 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                 </div>
             )}
             {isWithdrawModalOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
                     onClick={() => setIsWithdrawModalOpen(false)}
                 >
-                    <div 
+                    <div
                         className="bg-white p-8 rounded-xl shadow-xl w-96 relative"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -236,7 +287,8 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                                 value={withdrawAmount}
                                 onChange={(e) => setWithdrawAmount(e.target.value)}
                                 placeholder="Montant en EURe"
-                                className="border p-3 rounded-lg mb-4 w-full focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                className={`border p-3 rounded-lg mb-4 w-full focus:outline-none focus:ring-2 focus:ring-yellow-500 ${Number(withdrawAmount) > depositInFarm ? 'border-red-500' : ''
+                                    }`}
                             />
                         </div>
                         <div className="flex justify-end gap-3 mb-4">
@@ -247,8 +299,12 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, c
                                 Annuler
                             </button>
                             <button
-                                onClick={() => handleWithdraw(pool, Number(withdrawAmount))}
-                                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                                onClick={() => handleWithdraw(pool, Number(withdrawAmount), farmIsVault4626)}
+                                disabled={Number(withdrawAmount) > depositInFarm || Number(withdrawAmount) <= 0}
+                                className={`px-4 py-2 text-white rounded-lg transition-colors ${Number(withdrawAmount) > depositInFarm || Number(withdrawAmount) <= 0
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-yellow-500 hover:bg-yellow-600'
+                                    }`}
                             >
                                 Confirmer
                             </button>
