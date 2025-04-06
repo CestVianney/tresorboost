@@ -1,5 +1,5 @@
 import { createPublicClient, http } from 'viem'
-import { sepolia } from 'wagmi/chains' 
+import { sepolia } from './sepolia' 
 
 export const publicClient = createPublicClient({
     chain: sepolia,
