@@ -1,7 +1,5 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import {
-    hardhat, sepolia
-} from 'wagmi/chains';
+import { sepolia } from './sepolia';
 
 export const config = getDefaultConfig({
   appName: 'TresorBoost',
