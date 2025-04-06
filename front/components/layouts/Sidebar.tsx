@@ -1,9 +1,5 @@
 'use client';
-import React, { useState, useEffect } from "react"
-import { useAccount } from "wagmi"
-import { TBC_ADDRESS, TBC_ABI } from "@/constants/TresorBoostCoreContract"
-import { FARM_MANAGER_ADDRESS, FARM_MANAGER_ABI } from "@/constants/FarmManagerContract"
-import { useReadContract } from "wagmi"
+import React from "react"
 import { checkOwnerage } from "@/hooks/useOwner"
 
 const Sidebar = ({ className }: { className?: string }) => {

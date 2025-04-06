@@ -1,7 +1,7 @@
 import { createPublicClient, http } from 'viem'
-import { hardhat } from 'wagmi/chains' 
+import { sepolia } from 'wagmi/chains' 
 
 export const publicClient = createPublicClient({
-    chain: hardhat,
+    chain: sepolia,
     transport: http(process.env.ETH_RPC_URL)
 })

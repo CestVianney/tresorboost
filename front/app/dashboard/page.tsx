@@ -15,7 +15,7 @@ import { UserActivityData } from '@/constants/UserActivityData'
 export default function Dashboard() {
     const [isClient, setIsClient] = useState(false);
     const { farms } = useExistingFarms()
-    const { address, isConnected } = useAccount()
+    const { address } = useAccount()
     const { userActivity, userEuroBalance, userData } = useEventData()
 
     useEffect(() => {
