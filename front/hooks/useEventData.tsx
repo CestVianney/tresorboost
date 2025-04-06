@@ -158,7 +158,6 @@ export const useEventData = () => {
                 publicClient.getLogs({
                     address: TBC_ADDRESS,
                     event: parseAbiItem("event CoveredSlippage(address indexed user, address indexed pool, uint256 amount)"),
-                    args: { user: address },
                     fromBlock: BigInt(`${process.env.NEXT_PUBLIC_BLOCK_NUMBER}`),
                     toBlock: 'latest'
                 })
@@ -175,7 +174,7 @@ export const useEventData = () => {
             const userWithdrawals = filterUserEvents(withdrawals);
             const userRewardsClaimed = filterUserEvents(rewardsClaimed);
             const userFeesClaimed = filterUserEvents(feesClaimed);
-            const userCoveredSlippage = filterUserEvents(coveredSlippage);
+            const userCoveredSlippage = coveredSlippage;
 
             const allEvents = [...userDeposits, ...userWithdrawals, ...userRewardsClaimed, ...userFeesClaimed, ...userCoveredSlippage]
                 .sort((a, b) => Number((b.blockNumber ?? BigInt(0)) - (a.blockNumber ?? BigInt(0))));
