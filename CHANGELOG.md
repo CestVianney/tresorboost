@@ -1,3 +1,10 @@
+## [2.0.4](https://github.com/CestVianney/tresorboost/compare/v2.0.3...v2.0.4) (2025-04-06)
+
+
+### Bug Fixes
+
+* wagmi ([4553f61](https://github.com/CestVianney/tresorboost/commit/4553f61f0190ee2a2b7a027614351246ccb0dd4c))
+
 ## [2.0.3](https://github.com/CestVianney/tresorboost/compare/v2.0.2...v2.0.3) (2025-04-06)
 
 
