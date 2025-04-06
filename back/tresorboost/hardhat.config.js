@@ -21,8 +21,18 @@ module.exports = {
         url: process.env.ETH_RPC_URL,
         chainId: 11155111,
       },
-      blockNumber: 8006851,
+      blockNumber: 'latest',
       gasPrice: 100000000000
+    },
+    sepolia: {
+      url: process.env.ETH_RPC_URL,
+      chainId: 11155111,
+      accounts: [process.env.PRIVATE_KEY],
+    }
+  },
+  etherscan: {
+    apiKey: { 
+      sepolia:process.env.ETHERSCAN_API_KEY
     }
   }
 };
