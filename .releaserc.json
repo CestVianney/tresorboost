@@ -14,7 +14,8 @@
         {"type": "build", "release": "patch"},
         {"type": "ci", "release": "patch"},
         {"type": "chore", "release": "patch"},
-        {"type": "dev", "release": "patch"}
+        {"type": "dev", "release": "patch"},
+        {"type": "release", "release": "major"}
       ]
     }],
     "@semantic-release/release-notes-generator",
