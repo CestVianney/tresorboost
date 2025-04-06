@@ -19,8 +19,8 @@ const main = async () => {
     await addLiquidityEUReUSDT(aEURe, aUSDT);
     console.log("------------------------------DEPLOY VAULT 9%-------------------------------");
     const vaultUSDT75 = await deployVault(aUSDT, 900);
-    console.log("------------------------------DEPLOY VAULT4626------------------------------");
-    const vaultUSDT10 = await deployVault4626(aUSDT);
+    console.log("------------------------------DEPLOY VAULT 12%%------------------------------");
+    const vaultUSDT10 = await deployVault(aUSDT, 1200);
     console.log("------------------------------DEPLOY VAULT 15%------------------------------");
     const vaultUSDT15 = await deployVault(aUSDT, 50000);
     console.log("------------------------------CREATE FARMS------------------------------");
@@ -62,13 +62,22 @@ async function deployVault4626(token) {
     await vault4626.waitForDeployment();
     console.log("✅ Vault4626 deployed to:", await vault4626.getAddress());
     
-    // Mint des tokens au vault
+    // Mint des tokens à l'owner et faire un deposit
     const initialAmount = ethers.parseEther("1000000");
-    console.log("Token minted to vault4626:", await token.balanceOf(await vault4626.getAddress()));
+    const [owner] = await ethers.getSigners();
     
-    // Mint des shares initiales pour définir le ratio
+    console.log("Owner address:", owner.address);
+    console.log("Owner balance before mint:", (await token.balanceOf(owner.address)).toString());
+    
+    await token.mint(owner.address, initialAmount);
+    console.log("Owner balance after mint:", (await token.balanceOf(owner.address)).toString());
+    
+    console.log("Approving vault for amount:", initialAmount.toString());
     await token.approve(await vault4626.getAddress(), initialAmount);
-    await vault4626.deposit(initialAmount, await vault4626.getAddress());
+    console.log("Allowance after approval:", (await token.allowance(owner.address, await vault4626.getAddress())).toString());
+    
+    console.log("Attempting deposit of:", initialAmount.toString());
+    await vault4626.deposit(initialAmount, owner.address);
     console.log("Initial shares minted with deposit of:", initialAmount.toString());
     
     return vault4626;
@@ -133,6 +142,7 @@ async function addLiquidityEUReUSDT(aEURe, aUSDT) {
 async function createFarms(farmManager, usdtAddress, vaultUSDT75Address, vaultUSDT10, vaultUSDT15Address) {
     const farms = [
         { vault: vaultUSDT75Address, farmType: 0, rate: 400 },
+        { vault: await vaultUSDT10.getAddress(), farmType: 1, rate: 600 },
         { vault: vaultUSDT15Address, farmType: 2, rate: 800 },
     ];
 
@@ -151,18 +161,18 @@ async function createFarms(farmManager, usdtAddress, vaultUSDT75Address, vaultUS
         console.log("✅ Farm ", farm.farmType, " added to:", await farmManager.getAddress());
     }
 
-    await farmManager.addFarm(
-        true,
-        600,
-        1,
-        await vaultUSDT10.getAddress(),
-        usdtAddress,
-        "deposit(uint256,address)",
-        "redeem(uint256,address,address)",
-        "maxRedeem(address)",
-        true
-    )
-    console.log("✅ Farm ", 1, " added to:", await farmManager.getAddress());
+    // await farmManager.addFarm(
+    //     true,
+    //     600,
+    //     1,
+    //     await vaultUSDT10.getAddress(),
+    //     usdtAddress,
+    //     "deposit(uint256,address)",
+    //     "redeem(uint256,address,address)",
+    //     "maxRedeem(address)",
+    //     true
+    // )
+    // console.log("✅ Farm ", 1, " added to:", await farmManager.getAddress());
 }
 
 main().catch((e) => {

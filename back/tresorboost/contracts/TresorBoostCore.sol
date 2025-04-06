@@ -45,7 +45,7 @@ contract TresorBoostCore is Ownable {
     /// @param _user The address of the user
     /// @param _pool The address of the pool    
     modifier hasDepositedTooSoon(address _user, address _pool) {
-        require(block.timestamp - deposits[_user][_pool].lastTimeRewardCalculated > 60 , DepositTooSoon(60));
+        require(block.timestamp - deposits[_user][_pool].lastTimeRewardCalculated > 1 , DepositTooSoon(60));
         _;
     }
 
