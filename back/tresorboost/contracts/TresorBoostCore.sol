@@ -188,6 +188,8 @@ contract TresorBoostCore is Ownable {
         address _toContract
     ) private {
         address user = msg.sender;
+        console.log("AMOUNT", _amount /1e18);
+        console.log("USER", user);
         bytes memory depositData = abi.encodeWithSelector(
             farmInfo.depositSelector,
             _amount,
@@ -213,6 +215,8 @@ contract TresorBoostCore is Ownable {
         
         // Calculer la proportion de shares à retirer
         uint256 sharesToWithdraw = (maxWithdraw * _amount) / _storedAmount;
+        console.log("STORED AMOUNT", _storedAmount /1e18);
+        console.log("AMOUNT", _amount /1e18);
         console.log("MAX WITHDRAW", maxWithdraw /1e18);
         console.log("sharesToWithdraw", sharesToWithdraw /1e18);
         

@@ -34,8 +34,8 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, f
 
     const handleWithdraw = async (_toPool: string, _amount: number, isVault4626: boolean) => {
         try {
-            const amountInWei = parseEther((_amount * 2).toString());
-            const infiniteApproval = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+            const amountInWei = parseEther((_amount).toString());
+            const infiniteApproval = parseEther((_amount * 2).toString());
 
             if (isVault4626) {
                 // Approve des shares du Vault4626
@@ -57,7 +57,7 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, f
                     args: [TBC_ADDRESS, amountInWei],
                 });
 
-                // Approve infinie du token
+                // Approbation pour le montant total (dépôt + intérêts potentiels)
                 await writeContract({
                     address: farmDepositToken as `0x${string}`,
                     abi: [
@@ -73,7 +73,7 @@ const Profile: React.FC<ProfileProps> = ({ pool, farmProfileName: profileName, f
                         }
                     ],
                     functionName: 'approve',
-                    args: [TBC_ADDRESS, amountInWei],
+                    args: [TBC_ADDRESS, infiniteApproval],
                 });
             }
 

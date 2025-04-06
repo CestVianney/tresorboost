@@ -64,7 +64,6 @@ async function deployVault4626(token) {
     
     // Mint des tokens au vault
     const initialAmount = ethers.parseEther("1000000");
-    await token.mint(await vault4626.getAddress(), initialAmount);
     console.log("Token minted to vault4626:", await token.balanceOf(await vault4626.getAddress()));
     
     // Mint des shares initiales pour définir le ratio
